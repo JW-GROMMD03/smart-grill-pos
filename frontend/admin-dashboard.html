@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grill | Executive Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { primary: '#6366f1', secondary: '#8b5cf6', accent: '#f59e0b', dark: '#0f172a', card: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        .glass-panel { background: rgba(255, 255, 255, 1); border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 1rem; }
+        .dark .glass-panel { background: rgba(30, 41, 59, 1); border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .data-table th { padding: 12px 16px; text-transform: uppercase; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; color: #64748b; }
+        .dark .data-table th { border-bottom: 1px solid #334155; color: #94a3b8; background: rgba(15, 23, 42, 0.5); }
+        .data-table td { padding: 12px 16px; font-size: 0.875rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .dark .data-table td { border-bottom: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; }
+        .data-table tr:hover td { background: #f8fafc; }
+        .dark .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+        
+        .scanner-container { position: relative; overflow: hidden; border-radius: 1rem; border: 4px solid #334155; background: #000; }
+        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: #10b981; box-shadow: 0 0 15px #10b981; animation: scan 2.5s infinite linear; pointer-events: none; }
+        @keyframes scan { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        #qrReader video {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-brand-dark dark:text-slate-100 font-sans min-h-screen flex flex-col">
+    
+    <header class="h-[72px] bg-white dark:bg-brand-card border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-50">
+        <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">Smart Grill POS</h1>
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Enterprise Analytics</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 shadow-inner">
+                <span class="text-xs font-bold text-slate-500 uppercase mr-2">Target Date:</span>
+                <input type="date" id="dateFilter" onchange="loadAllData()" class="bg-transparent text-sm font-medium text-slate-700 dark:text-white focus:outline-none">
+            </div>
+            <button onclick="toggleTheme()" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                <svg class="w-5 h-5 text-slate-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+            <div class="flex items-center space-x-3 pl-4 border-l border-slate-200 dark:border-slate-700">
+                <button onclick="openProfile()" class="w-9 h-9 rounded-full bg-brand-accent flex items-center justify-center font-bold text-white shadow-md hover:ring-2 hover:ring-brand-accent transition cursor-pointer" title="Edit Profile">AD</button>
+                <button onclick="logout()" class="text-sm font-bold text-rose-500 hover:text-rose-600 transition">Log Out</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <aside class="w-64 bg-white dark:bg-brand-card border-r border-slate-200 dark:border-slate-800 p-4 space-y-2 overflow-y-auto">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Dashboards</p>
+            <button onclick="switchTab('sales')" id="nav-sales" class="tab-btn w-full text-left py-3 px-4 rounded-xl font-semibold bg-brand-primary/10 text-brand-primary transition">Live Sales & Cash</button>
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Deep BI Analysis</button>
+            <button onclick="switchTab('expenses')" id="nav-expenses" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Expense Tracker</button>
+            <button onclick="switchTab('records')" id="nav-records" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Comprehensive Records</button>
+            <button onclick="switchTab('menu')" id="nav-menu" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Menu Catalog</button>
+            <button onclick="switchTab('users')" id="nav-users" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">User Management</button>
+            <button onclick="switchTab('scanner')" id="nav-scanner" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Smart Deletion</button>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50 dark:bg-brand-dark">
+            
+            <div id="salesTab" class="tab-section space-y-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass-panel p-6 col-span-2 relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-none shadow-lg">
+                        <div class="relative z-10">
+                            <p class="text-emerald-100 font-semibold uppercase tracking-wider text-sm mb-1">Live Cash At Hand</p>
+                            <h2 id="cashAtHand" class="text-5xl font-black tracking-tight">KES 0</h2>
+                            <p class="text-sm mt-3 text-emerald-100">(Total Cash Received - Total Cash Expenses)</p>
+                        </div>
+                        <svg class="absolute right-0 bottom-0 opacity-20 w-48 h-48 transform translate-x-8 translate-y-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <div class="glass-panel p-6 flex flex-col justify-center border-t-4 border-t-amber-500 shadow-md">
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold uppercase">Total Cash Sales</p>
+                        <h3 id="cashSales" class="text-3xl font-bold text-slate-800 dark:text-white mt-2">KES 0</h3>
+                    </div>
+                    <div class="glass-panel p-6 flex flex-col justify-center border-t-4 border-t-brand-primary shadow-md">
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold uppercase">Total M-Pesa Sales</p>
+                        <h3 id="mpesaSales" class="text-3xl font-bold text-brand-primary mt-2">KES 0</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel overflow-hidden shadow-md">
+                    <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800/50">
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Live Transactions Feed</h3>
+                        <div class="flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
+                            <span class="flex h-2.5 w-2.5 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
+                            <span class="text-xs font-bold text-green-700 dark:text-green-400 uppercase">Live Sync</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left data-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Cashier & Shift</th>
+                                    <th>Order Details</th>
+                                    <th>Payment</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyticsTab" class="tab-section hidden space-y-8">
+                
+                <div>
+                    <h2 class="text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-8 bg-brand-accent rounded mr-3"></span> Meat Diagnostics</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="glass-panel overflow-hidden shadow-md">
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Beef Analysis</h3></div>
+                            <table class="w-full data-table">
+                                <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
+                                <tbody>
+                                    <tr><td>1/4 KG</td><td class="text-right font-medium" id="beef14">0</td></tr>
+                                    <tr><td>1/2 KG</td><td class="text-right font-medium" id="beef12">0</td></tr>
+                                    <tr><td>1 KG</td><td class="text-right font-medium" id="beef1">0</td></tr>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-primary">Total Sold</td><td class="text-right font-bold text-brand-primary" id="beefTotKg">0 KG</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                                <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="beefCash">0</span></div>
+                                <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="beefMpesa">0</span></div>
+                            </div>
+                        </div>
+                        <div class="glass-panel overflow-hidden shadow-md">
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Mbuzi Analysis</h3></div>
+                            <table class="w-full data-table">
+                                <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
+                                <tbody>
+                                    <tr><td>1/4 KG</td><td class="text-right font-medium" id="mbuzi14">0</td></tr>
+                                    <tr><td>1/2 KG</td><td class="text-right font-medium" id="mbuzi12">0</td></tr>
+                                    <tr><td>1 KG</td><td class="text-right font-medium" id="mbuzi1">0</td></tr>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-secondary">Total Sold</td><td class="text-right font-bold text-brand-secondary" id="mbuziTotKg">0 KG</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                                <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="mbuziCash">0</span></div>
+                                <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="mbuziMpesa">0</span></div>
+                            </div>
+                        </div>
+                        <div class="glass-panel overflow-hidden shadow-md">
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Chicken Analysis</h3></div>
+                            <table class="w-full data-table">
+                                <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
+                                <tbody>
+                                    <tr><td>1/4 KG</td><td class="text-right font-medium" id="chicken14">0</td></tr>
+                                    <tr><td>1/2 KG</td><td class="text-right font-medium" id="chicken12">0</td></tr>
+                                    <tr><td>1 KG</td><td class="text-right font-medium" id="chicken1">0</td></tr>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-accent">Total Sold</td><td class="text-right font-bold text-brand-accent" id="chickenTotKg">0 KG</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                                <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="chickenCash">0</span></div>
+                                <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="chickenMpesa">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-8 bg-blue-500 rounded mr-3"></span> Fish Revenue & Movement</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 glass-panel p-6 shadow-md">
+                            <h3 class="font-bold text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point</h3>
+                            <div class="relative w-full h-64">
+                                <canvas id="fishChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6 flex flex-col justify-center space-y-6 shadow-md border-t-4 border-t-blue-500">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-500 uppercase">Total Fish Revenue</p>
+                                <h3 class="text-3xl font-black text-blue-500 mt-1" id="fishTotalRev">KES 0</h3>
+                            </div>
+                            <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash Generated</span><span class="font-bold text-emerald-500" id="fishCash">KES 0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa Generated</span><span class="font-bold text-brand-primary" id="fishMpesa">KES 0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel overflow-hidden shadow-md">
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-emerald-500">Individual Greens</h3></div>
+                        <table class="w-full data-table">
+                            <thead><tr><th>Green Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                            <tbody id="greensTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="glass-panel overflow-hidden shadow-md">
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-amber-500">Sides & Accompaniments</h3></div>
+                        <table class="w-full data-table">
+                            <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                            <tbody id="sidesTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="glass-panel overflow-hidden shadow-md">
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-rose-500">Beverages Analytics</h3></div>
+                        <table class="w-full data-table">
+                            <thead><tr><th>Beverage</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                            <tbody>
+                                <tr><td class="font-bold text-red-500">Coca-Cola</td><td class="text-right" id="cokeQty">0</td><td class="text-right font-bold text-emerald-500" id="cokeRev">0</td></tr>
+                                <tr><td class="font-bold text-blue-500">Pepsi</td><td class="text-right" id="pepsiQty">0</td><td class="text-right font-bold text-emerald-500" id="pepsiRev">0</td></tr>
+                                <tr><td class="font-bold text-cyan-500">Water</td><td class="text-right" id="waterQty">0</td><td class="text-right font-bold text-emerald-500" id="waterRev">0</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- EXPENSES TAB -->
+            <div id="expensesTab" class="tab-section hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 shadow-md lg:col-span-1 space-y-4">
+                        <h3 class="text-xl font-bold text-brand-primary">Record New Expense</h3>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Expense Date</label>
+                            <input type="date" id="expDate" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Shift</label>
+                            <select id="expShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                                <option value="Day">Day Shift</option>
+                                <option value="Night">Night Shift</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Description / Name</label>
+                            <input type="text" id="expDesc" placeholder="e.g. Charcoal" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Total Amount (KES)</label>
+                            <input type="number" id="expAmt" placeholder="0.00" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Payment Method</label>
+                            <select id="expType" onchange="toggleExpenseSplit()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                                <option value="CASH">Cash</option>
+                                <option value="MPESA">M-Pesa</option>
+                                <option value="PARTIAL">Partial (Cash & M-Pesa)</option>
+                            </select>
+                        </div>
+                        <div id="expPartialDiv" class="hidden space-y-3">
+                            <input type="number" id="expCashAmt" placeholder="Cash Amount" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none">
+                            <input type="number" id="expMpesaAmt" placeholder="M-Pesa Amount" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none">
+                        </div>
+                        <button onclick="submitExpense()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-3 rounded-lg shadow-lg transition">Save Expense</button>
+                    </div>
+
+                    <div class="glass-panel p-6 shadow-md lg:col-span-2 space-y-6">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Monthly & Daily Expense Analytics</h3>
+                            <input type="month" id="expMonthFilter" onchange="loadExpenses()" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                                <p class="text-xs uppercase text-slate-400 font-bold">Total Expenses</p>
+                                <h4 id="statTotalExp" class="text-2xl font-black text-rose-500 mt-1">KES 0</h4>
+                            </div>
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                                <p class="text-xs uppercase text-slate-400 font-bold">Cash Outflows</p>
+                                <h4 id="statCashExp" class="text-2xl font-black text-amber-500 mt-1">KES 0</h4>
+                            </div>
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                                <p class="text-xs uppercase text-slate-400 font-bold">Highest Expense Day</p>
+                                <h4 id="statHighestDay" class="text-lg font-black text-brand-primary mt-1">-</h4>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-500 uppercase mb-3">Expenses Logged By Cashier / Admin</h4>
+                            <div id="cashierExpenseBreakdown" class="space-y-2 text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECORDS TAB -->
+            <div id="recordsTab" class="tab-section hidden space-y-6">
+                <div class="glass-panel p-6 shadow-md flex flex-wrap gap-4 items-center justify-between">
+                    <h3 class="text-xl font-bold text-brand-primary">Comprehensive Business Records</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="recType" onchange="toggleRecordFilters()" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                            <option value="date">Filter by Date</option>
+                            <option value="month">Filter by Month</option>
+                            <option value="year">Filter by Year</option>
+                        </select>
+                        <input type="date" id="recDateInput" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                        <input type="month" id="recMonthInput" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden">
+                        <input type="number" id="recYearInput" placeholder="YYYY" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden w-24">
+                        <select id="recShift" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                            <option value="All">All Shifts</option>
+                            <option value="Day">Day Shift</option>
+                            <option value="Night">Night Shift</option>
+                        </select>
+                        <button onclick="loadComprehensiveRecords()" class="bg-brand-primary text-white font-bold px-4 py-2 rounded-lg text-sm shadow hover:bg-brand-secondary">Generate</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Total Revenue</p><h3 id="recTotalSales" class="text-3xl font-black text-emerald-500 mt-1">KES 0</h3></div>
+                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Total Expenses</p><h3 id="recTotalExp" class="text-3xl font-black text-rose-500 mt-1">KES 0</h3></div>
+                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Net Profit</p><h3 id="recNetProfit" class="text-3xl font-black text-brand-primary mt-1">KES 0</h3></div>
+                </div>
+
+                <div class="glass-panel p-6 overflow-x-auto shadow-md">
+                    <h4 class="font-bold text-lg mb-4 text-slate-800 dark:text-white">Transaction & Ledger Archive</h4>
+                    <table class="w-full data-table">
+                        <thead><tr><th>Date & Shift</th><th>Description / Items</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
+                        <tbody id="comprehensiveTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="menuTab" class="tab-section hidden space-y-6">
+                <div class="glass-panel p-6 shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
+                        <div>
+                            <h3 class="font-bold text-xl text-brand-primary">Catalog Management</h3>
+                            <p class="text-sm text-slate-500 mt-1">Changes are synced to the cashier cache at lightning speed.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <input type="text" id="menuName" placeholder="Item Name" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                            
+                            <select id="menuCategory" onchange="toggleSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
+                                <option value="MEAT CUTS">Meat Cuts</option>
+                                <option value="TILAPIA VARIATIONS">Tilapia Variations</option>
+                                <option value="WETFRY">Wet Fry</option>
+                                <option value="GREENS & KACHUMBARI">Greens & Kachumbari</option>
+                                <option value="CHIPS & PACKAGING">Chips & Packaging</option>
+                                <option value="DRINKS & WATER">Drinks & Water</option>
+                            </select>
+                            
+                            <select id="menuSubCategory" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
+                                <option value="beef">Beef</option>
+                                <option value="chicken">Chicken</option>
+                                <option value="mbuzi">Mbuzi</option>
+                            </select>
+                            
+                            <input type="number" id="menuPrice" placeholder="Price (KES)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm w-32 focus:ring-2 outline-none">
+                            
+                            <button onclick="addMenuItem()" class="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-2 rounded font-bold shadow-md transition">Add</button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left data-table">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Category</th>
+                                    <th>Sub-Category</th>
+                                    <th>Price (KES)</th>
+                                    <th>Visibility</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="menuTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="glass-panel p-8 shadow-md">
+                    <h3 class="font-bold text-xl mb-6 text-brand-primary">Onboard Cashier</h3>
+                    <div class="space-y-4">
+                        <input type="text" id="regFullName" placeholder="Full Legal Name" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        <input type="text" id="regId" placeholder="Username / Email" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        <input type="password" id="regPin" placeholder="4-Digit Secure PIN" maxlength="4" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        <select id="regShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                            <option value="Day">Day Shift</option>
+                            <option value="Night">Night Shift</option>
+                        </select>
+                        <button onclick="createCashier()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold p-3 rounded-lg shadow-lg transition">Authorize & Create Account</button>
+                    </div>
+                </div>
+                <div class="glass-panel p-8 shadow-md">
+                    <h3 class="font-bold text-xl mb-4 text-rose-500">Access Control & Accounts</h3>
+                    <p class="text-sm text-slate-500 mb-6">Manage account blocking with custom durations and permanent deletion controls.</p>
+                    <div id="userListArea" class="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <p class="text-slate-400 italic text-sm">System accounts will populate here...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="scannerTab" class="tab-section hidden">
+                <div class="glass-panel p-8 max-w-2xl mx-auto flex flex-col items-center shadow-md">
+                    <h3 class="text-2xl font-bold text-rose-500 mb-2">Smart Deletion Authorization</h3>
+                    <p class="text-center text-sm text-slate-500 mb-6 max-w-md">Align the QR code within the frame, or manually enter the 6-digit remote authorization code requested by the cashier.</p>
+                    
+                    <div class="w-full max-w-sm mb-8 flex space-x-2">
+                        <input type="text" id="manualAuthCode" placeholder="6-Digit Code" maxlength="6" class="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-center text-xl tracking-widest font-mono outline-none focus:ring-2 focus:ring-rose-500 uppercase">
+                        <button onclick="authorizeManualDeletion()" class="bg-rose-500 hover:bg-rose-600 text-white px-6 rounded-lg font-bold shadow-md transition">Delete</button>
+                    </div>
+
+                    <div class="flex items-center w-full max-w-sm mb-8 space-x-4">
+                        <hr class="flex-1 border-slate-300 dark:border-slate-700">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">OR SCAN QR</span>
+                        <hr class="flex-1 border-slate-300 dark:border-slate-700">
+                    </div>
+
+                    <div class="scanner-container w-full max-w-sm aspect-square shadow-2xl">
+                        <div id="qrReader" class="w-full h-full object-cover"></div>
+                        <div class="scanner-line"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- BLOCK DURATION MODAL -->
+    <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center">
+        <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
+            <h3 class="text-xl font-bold text-rose-500">Configure Account Block</h3>
+            <input type="hidden" id="blockTargetUserId">
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Duration</label>
+                <select id="blockDurationType" onchange="toggleBlockDurationInput()" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+                    <option value="indefinite">Until I Unblock Manually</option>
+                    <option value="days">Specific Number of Days</option>
+                </select>
+            </div>
+            <div id="blockDaysDiv" class="hidden">
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Number of Days</label>
+                <input type="number" id="blockDaysCount" value="1" min="1" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Reason / Message for User</label>
+                <textarea id="blockReasonText" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">Please contact the manager for clarifications and other options.</textarea>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="executeBlockUser()" class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-rose-600 transition">Confirm Block</button>
+                <button onclick="closeBlockModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity">
+        <div class="bg-white dark:bg-brand-card p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Admin Profile</h2>
+                <button onclick="closeProfile()" class="text-slate-400 hover:text-rose-500 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-500 mb-1">Email / Username</label>
+                    <input type="text" id="profEmail" disabled class="w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-400 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-500 mb-1">Full Name</label>
+                    <input type="text" id="profName" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-500 mb-1">New Password (Leave blank to keep current)</label>
+                    <input type="password" id="profPass" placeholder="••••••••" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
+                </div>
+                <button onclick="saveProfile()" class="w-full mt-4 bg-brand-primary hover:bg-brand-secondary text-white font-bold py-3 rounded-lg shadow-lg transition">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://127.0.0.1:8000'; 
+        
+        let fishChart;
+        let qrScanner;
+        let currentTab = 'sales';
+        
+        const formatKsh = (n) => `KES ${Number(n).toLocaleString()}`;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateFilter').value = today;
+            document.getElementById('recDateInput').value = today;
+            document.getElementById('expDate').value = today;
+            document.getElementById('expMonthFilter').value = today.slice(0, 7);
+            document.getElementById('recMonthInput').value = today.slice(0, 7);
+            document.getElementById('recYearInput').value = today.slice(0, 4);
+            
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+
+            initChart();
+            loadAllData();
+            
+            setInterval(() => { 
+                if(currentTab === 'sales') {
+                    loadSales(); 
+                }
+            }, 10000);
+        });
+
+        function toggleTheme() { 
+            document.documentElement.classList.toggle('dark'); 
+        }
+
+        async function stopScannerSafely() {
+            if (qrScanner) {
+                try {
+                    const state = qrScanner.getState();
+                    if (state === 2 || state === 3) {
+                        await qrScanner.stop();
+                    }
+                    qrScanner.clear();
+                    qrScanner = null;
+                } catch(err) {}
+            }
+        }
+
+        async function switchTab(tab) {
+            currentTab = tab;
+            
+            document.querySelectorAll('.tab-section').forEach(el => {
+                el.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition";
+            });
+
+            document.getElementById(`${tab}Tab`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`).className = "tab-btn w-full text-left py-3 px-4 rounded-xl font-semibold bg-brand-primary/10 text-brand-primary transition";
+
+            if (tab === 'scanner') {
+                startSmartScanner();
+            } else { 
+                await stopScannerSafely();
+            }
+
+            loadAllData();
+        }
+
+        function toggleSubCategory() {
+            const cat = document.getElementById('menuCategory').value;
+            document.getElementById('menuSubCategory').style.display = (cat === 'MEAT CUTS') ? 'block' : 'none';
+        }
+
+        function toggleExpenseSplit() {
+            const type = document.getElementById('expType').value;
+            document.getElementById('expPartialDiv').style.display = (type === 'PARTIAL') ? 'block' : 'none';
+        }
+
+        function toggleRecordFilters() {
+            const type = document.getElementById('recType').value;
+            document.getElementById('recDateInput').classList.toggle('hidden', type !== 'date');
+            document.getElementById('recMonthInput').classList.toggle('hidden', type !== 'month');
+            document.getElementById('recYearInput').classList.toggle('hidden', type !== 'year');
+        }
+
+        function toggleBlockDurationInput() {
+            const val = document.getElementById('blockDurationType').value;
+            document.getElementById('blockDaysDiv').classList.toggle('hidden', val !== 'days');
+        }
+
+        async function apiCall(endpoint, method='GET') {
+            const date = document.getElementById('dateFilter').value;
+            const res = await fetch(`${BASE_URL}/api/v1/admin${endpoint}${endpoint.includes('?') ? '&' : '?'}business_date=${date}&start_date=${date}&end_date=${date}`, {
+                method: method, 
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if(res.status === 401) {
+                logout();
+            }
+            return await res.json();
+        }
+
+        function loadAllData() {
+            if(currentTab === 'sales') loadSales();
+            if(currentTab === 'analytics') loadDeepBI();
+            if(currentTab === 'expenses') loadExpenses();
+            if(currentTab === 'records') loadComprehensiveRecords();
+            if(currentTab === 'menu') loadMenu();
+            if(currentTab === 'users') loadUsers();
+        }
+
+        async function loadSales() {
+            const data = await apiCall('/sales/live');
+            
+            document.getElementById('cashAtHand').innerText = formatKsh(data.cash_at_hand);
+            document.getElementById('cashSales').innerText = formatKsh(data.cash_sales);
+            document.getElementById('mpesaSales').innerText = formatKsh(data.mpesa_sales);
+            
+            document.getElementById('salesTableBody').innerHTML = data.recent_transactions.map(t => {
+                const time = new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const cashier = t.cashiers 
+                    ? `<span class="font-bold">${t.cashiers.full_name}</span> <span class="text-xs text-slate-400">(${t.cashiers.assigned_shift})</span>` 
+                    : 'Unknown';
+                
+                let methodBadge = '';
+                const pm = (t.payment_method || '').toUpperCase();
+                
+                if (pm === 'CASH') {
+                    methodBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">CASH</span>';
+                } else if (pm === 'PARTIAL') {
+                    methodBadge = '<span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">PARTIAL</span>';
+                } else {
+                    methodBadge = '<span class="px-2 py-1 rounded bg-brand-primary/10 text-brand-primary text-xs font-bold">M-PESA</span>';
+                }
+                
+                return `
+                <tr>
+                    <td class="font-medium text-slate-500">${time}</td>
+                    <td>${cashier}</td>
+                    <td class="text-xs truncate max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
+                    <td>${methodBadge}</td>
+                    <td class="text-right font-bold text-emerald-500">${formatKsh(t.total_amount)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function loadDeepBI() {
+            const data = await apiCall('/analytics/deep');
+            
+            const meats = ['beef', 'mbuzi', 'chicken'];
+            meats.forEach(m => {
+                if(data.meat[m]) {
+                    const d = data.meat[m];
+                    document.getElementById(`${m}14`).innerText = d['1/4'];
+                    document.getElementById(`${m}12`).innerText = d['1/2'];
+                    document.getElementById(`${m}1`).innerText = d['1kg'];
+                    document.getElementById(`${m}TotKg`).innerText = `${d.total_kg} KG`;
+                    document.getElementById(`${m}Cash`).innerText = formatKsh(d.cash);
+                    document.getElementById(`${m}Mpesa`).innerText = formatKsh(d.mpesa);
+                }
+            });
+
+            const fPrices = Object.keys(data.fish.prices).map(p => `KES ${p}`);
+            const fAmounts = Object.values(data.fish.prices).map(v => v.amount);
+            
+            fishChart.data.labels = fPrices;
+            fishChart.data.datasets[0].data = fAmounts;
+            fishChart.update();
+            
+            document.getElementById('fishTotalRev').innerText = formatKsh(data.fish.total_revenue);
+            document.getElementById('fishCash').innerText = formatKsh(data.fish.cash);
+            document.getElementById('fishMpesa').innerText = formatKsh(data.fish.mpesa);
+
+            document.getElementById('greensTableBody').innerHTML = Object.entries(data.greens).map(([name, d]) => `
+                <tr>
+                    <td class="capitalize font-medium text-brand-primary">${name}</td>
+                    <td class="text-right">${d.qty}</td>
+                    <td class="text-right text-emerald-500 font-bold">${formatKsh(d.revenue)}</td>
+                </tr>
+            `).join('');
+
+            const s = data.sides;
+            const sidesArr = [
+                {name: 'Chips (Regular)', d: s.chips_regular}, 
+                {name: 'Chips (Masala)', d: s.chips_masala},
+                {name: 'Kachumbari', d: s.kachumbari}, 
+                {name: 'Wet Fry', d: s.wet_fry}
+            ];
+            
+            document.getElementById('sidesTableBody').innerHTML = sidesArr.map(item => `
+                <tr>
+                    <td class="font-medium text-amber-500">${item.name}</td>
+                    <td class="text-right">${item.d.qty}</td>
+                    <td class="text-right text-emerald-500 font-bold">${formatKsh(item.d.revenue)}</td>
+                </tr>
+            `).join('');
+
+            const dr = data.drinks;
+            document.getElementById('cokeQty').innerText = dr.coke.qty; 
+            document.getElementById('cokeRev').innerText = formatKsh(dr.coke.rev);
+            
+            document.getElementById('pepsiQty').innerText = dr.pepsi.qty; 
+            document.getElementById('pepsiRev').innerText = formatKsh(dr.pepsi.rev);
+            
+            document.getElementById('waterQty').innerText = dr.water.qty; 
+            document.getElementById('waterRev').innerText = formatKsh(dr.water.rev);
+        }
+
+        async function loadExpenses() {
+            const month = document.getElementById('expMonthFilter').value;
+            const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            const data = await res.json();
+            document.getElementById('statTotalExp').innerText = formatKsh(data.total_expenses);
+            document.getElementById('statCashExp').innerText = formatKsh(data.cash_expenses);
+            document.getElementById('statHighestDay').innerText = data.highest_expense_day || 'None';
+
+            const cashierDiv = document.getElementById('cashierExpenseBreakdown');
+            cashierDiv.innerHTML = Object.entries(data.cashier_breakdown).map(([name, amt]) => `
+                <div class="flex justify-between p-3 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
+                    <span class="font-semibold">${name}</span>
+                    <span class="font-bold text-rose-500">${formatKsh(amt)}</span>
+                </div>
+            `).join('') || '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+        }
+
+        async function submitExpense() {
+            const desc = document.getElementById('expDesc').value.trim();
+            const amt = parseFloat(document.getElementById('expAmt').value);
+            const type = document.getElementById('expType').value;
+            const shift = document.getElementById('expShift').value;
+            const businessDate = document.getElementById('expDate').value;
+            const cashAmt = parseFloat(document.getElementById('expCashAmt').value) || 0;
+            const mpesaAmt = parseFloat(document.getElementById('expMpesaAmt').value) || 0;
+
+            if(!desc || isNaN(amt) || amt <= 0) { 
+                alert("Please provide a valid description and amount."); 
+                return; 
+            }
+
+            const payload = {
+                description: desc,
+                amount: amt,
+                payment_type: type,
+                cash_amount: cashAmt,
+                mpesa_amount: mpesaAmt,
+                business_date: businessDate || document.getElementById('dateFilter').value,
+                shift: shift
+            };
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/expenses`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`, 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if(res.ok) {
+                    alert("Expense logged successfully.");
+                    document.getElementById('expDesc').value = '';
+                    document.getElementById('expAmt').value = '';
+                    document.getElementById('expCashAmt').value = '';
+                    document.getElementById('expMpesaAmt').value = '';
+                    loadExpenses();
+                } else { 
+                    alert("Failed to log expense: " + (data.detail || data.message || "Unknown error")); 
+                }
+            } catch (err) {
+                alert("Network error occurred while saving expense.");
+            }
+        }
+
+        async function loadComprehensiveRecords() {
+            const type = document.getElementById('recType').value;
+            let queryParam = '';
+            if (type === 'date') queryParam = `date=${document.getElementById('recDateInput').value}`;
+            else if (type === 'month') queryParam = `month=${document.getElementById('recMonthInput').value}`;
+            else if (type === 'year') queryParam = `year=${document.getElementById('recYearInput').value}`;
+
+            const shift = document.getElementById('recShift').value;
+            const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            const data = await res.json();
+            document.getElementById('recTotalSales').innerText = formatKsh(data.summary.total_sales);
+            document.getElementById('recTotalExp').innerText = formatKsh(data.summary.total_expenses);
+            document.getElementById('recNetProfit').innerText = formatKsh(data.summary.net_profit);
+
+            const combined = [
+                ...(data.sales || []).map(s => ({ ...s, record_type: 'SALE', display_name: `Sale (${s.payment_method})`, amount: s.total_amount })),
+                ...(data.expenses || []).map(e => ({ ...e, record_type: 'EXPENSE', display_name: `Expense: ${e.description}`, amount: -e.amount }))
+            ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+            document.getElementById('comprehensiveTableBody').innerHTML = combined.map(item => `
+                <tr>
+                    <td>${item.business_date} (${item.shift || 'Day'})</td>
+                    <td class="font-medium">${item.display_name}</td>
+                    <td><span class="px-2 py-0.5 rounded text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
+                    <td class="text-right font-bold ${item.record_type === 'SALE' ? 'text-emerald-500' : 'text-rose-500'}">${formatKsh(item.amount)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found for this filter.</td></tr>';
+        }
+
+        async function loadUsers() {
+            const res = await fetch(`${BASE_URL}/api/v1/admin/users`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            const users = await res.json();
+            document.getElementById('userListArea').innerHTML = users.map(u => `
+                <div class="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                    <div>
+                        <h4 class="font-bold">${u.full_name} (${u.username})</h4>
+                        <p class="text-xs text-slate-400">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
+                    </div>
+                    <div class="flex space-x-2">
+                        ${u.status === 'ACTIVE' ? 
+                            `<button onclick="openBlockModal('${u.id}')" class="bg-amber-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
+                            `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
+                        }
+                        <button onclick="deleteUser('${u.id}')" class="bg-rose-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-600 transition">Delete</button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-slate-400 italic">No cashiers registered.</p>';
+        }
+
+        function openBlockModal(userId) {
+            document.getElementById('blockTargetUserId').value = userId;
+            document.getElementById('blockModal').classList.remove('hidden');
+        }
+
+        function closeBlockModal() {
+            document.getElementById('blockModal').classList.add('hidden');
+        }
+
+        async function executeBlockUser() {
+            const userId = document.getElementById('blockTargetUserId').value;
+            const type = document.getElementById('blockDurationType').value;
+            const days = type === 'days' ? parseInt(document.getElementById('blockDaysCount').value) : null;
+            const reason = document.getElementById('blockReasonText').value;
+
+            await updateUserStatus(userId, 'BLOCKED', days, reason);
+            closeBlockModal();
+        }
+
+        async function updateUserStatus(userId, status, days=null, reason=null) {
+            await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status, duration_days: days, reason: reason })
+            });
+            loadUsers();
+        }
+
+        async function deleteUser(userId) {
+            if(!confirm("Permanently delete this user account?")) return;
+            await fetch(`${BASE_URL}/api/v1/admin/users/${userId}`, {
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            loadUsers();
+        }
+
+        async function loadMenu() {
+            const items = await apiCall('/menu');
+            document.getElementById('menuTableBody').innerHTML = items.map(i => {
+                const statusBadge = i.is_active 
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                    : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+                
+                return `
+                <tr>
+                    <td class="font-bold text-slate-700 dark:text-slate-200">${i.name}</td>
+                    <td><span class="text-[10px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded">${i.category}</span></td>
+                    <td><span class="text-[10px] font-bold uppercase tracking-wider text-brand-primary">${i.sub_category || '-'}</span></td>
+                    <td class="font-medium text-emerald-500">${formatKsh(i.price)}</td>
+                    <td><button onclick="toggleMenu('${i.id}', ${!i.is_active})" class="text-xs px-2 py-1 rounded font-bold ${statusBadge}">${i.is_active ? 'ENABLED' : 'DISABLED'}</button></td>
+                    <td class="text-right">
+                        <button onclick="deleteMenu('${i.id}')" class="text-xs font-bold text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded transition">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function addMenuItem() {
+            const name = encodeURIComponent(document.getElementById('menuName').value);
+            const cat = encodeURIComponent(document.getElementById('menuCategory').value);
+            const sub = encodeURIComponent(document.getElementById('menuSubCategory').value);
+            const price = document.getElementById('menuPrice').value;
+            
+            let url = `${BASE_URL}/api/v1/admin/menu?name=${name}&category=${cat}&price=${price}`;
+            if(document.getElementById('menuCategory').value === 'MEAT CUTS') {
+                url += `&sub_category=${sub}`;
+            }
+            
+            await fetch(url, { 
+                method: 'POST', 
+                headers: {'Authorization': `Bearer ${localStorage.getItem('access_token')}`} 
+            });
+            
+            document.getElementById('menuName').value = '';
+            document.getElementById('menuPrice').value = '';
+            loadMenu();
+        }
+
+        async function toggleMenu(id, state) {
+            await fetch(`${BASE_URL}/api/v1/admin/menu/${id}/toggle?is_active=${state}`, { 
+                method: 'PATCH', 
+                headers: {'Authorization': `Bearer ${localStorage.getItem('access_token')}`} 
+            });
+            loadMenu();
+        }
+
+        async function deleteMenu(id) {
+            if (!id || id === 'undefined' || id === 'null') {
+                alert("Error: Invalid menu item identifier.");
+                return;
+            }
+            if(!confirm("Are you sure you want to permanently delete this menu item?")) return;
+            
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/menu/${id}`, { 
+                    method: 'DELETE', 
+                    headers: {'Authorization': `Bearer ${localStorage.getItem('access_token')}`} 
+                });
+                
+                if (res.ok) {
+                    loadMenu();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to delete item: " + (err.detail || err.message));
+                }
+            } catch (error) {
+                alert("Network error while attempting to delete menu item.");
+            }
+        }
+
+        async function authorizeManualDeletion() {
+            const code = document.getElementById('manualAuthCode').value.trim();
+            if(!code || code.length < 6) {
+                alert("Please enter a valid 6-digit code.");
+                return;
+            }
+            
+            const res = await fetch(`${BASE_URL}/api/v1/admin/deletion/authorize`, {
+                method: 'POST', 
+                headers: { 
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ token: code })
+            });
+            
+            const data = await res.json();
+            alert(data.message || data.detail);
+            
+            if(res.ok) {
+                document.getElementById('manualAuthCode').value = '';
+                loadAllData();
+            }
+        }
+
+        function startSmartScanner() {
+            if(!qrScanner) {
+                qrScanner = new Html5Qrcode("qrReader");
+            }
+            
+            try {
+                if (qrScanner.getState() === 2) return;
+            } catch(e) {}
+
+            qrScanner.start({ facingMode: "environment" }, {
+                fps: 10, 
+                qrbox: { width: 250, height: 250 }
+            }, async (decodedText) => {
+                await stopScannerSafely();
+                
+                const urlParams = new URLSearchParams(decodedText.split('?')[1] || "");
+                const token = urlParams.get('token') || decodedText;
+                
+                const res = await fetch(`${BASE_URL}/api/v1/admin/deletion/authorize`, {
+                    method: 'POST', 
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: token.trim() })
+                });
+                
+                const data = await res.json();
+                alert(data.message || data.detail);
+                
+                if(res.ok) {
+                    loadAllData();
+                }
+            }).catch(err => {});
+        }
+
+        async function openProfile() {
+            document.getElementById('profileModal').classList.remove('hidden');
+            
+            const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, { 
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } 
+            });
+            
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('profName').value = data.full_name || '';
+                document.getElementById('profEmail').value = data.username || 'admin@smartgrill.co.ke';
+                document.getElementById('profPass').value = '';
+            }
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        async function saveProfile() {
+            const payload = {};
+            const name = document.getElementById('profName').value;
+            const pass = document.getElementById('profPass').value;
+            
+            if(name) { payload.full_name = name; }
+            if(pass) { payload.password = pass; }
+
+            const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if(res.ok) {
+                alert("Profile updated successfully!");
+                closeProfile();
+            } else {
+                const err = await res.json();
+                alert("Update failed: " + (err.detail || err.message));
+            }
+        }
+
+        async function createCashier() {
+            const fullName = document.getElementById('regFullName').value.trim();
+            const username = document.getElementById('regId').value.trim();
+            const pin = document.getElementById('regPin').value.trim();
+            const shift = document.getElementById('regShift').value;
+
+            if (!fullName || !username || !pin) {
+                alert("Please fill out all fields.");
+                return;
+            }
+            if (pin.length !== 4) {
+                alert("Security PIN must be exactly 4 digits.");
+                return;
+            }
+
+            const url = `${BASE_URL}/api/v1/admin/cashiers/register?full_name=${encodeURIComponent(fullName)}&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}&assigned_shift=${encodeURIComponent(shift)}`;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+
+                if (res.ok) {
+                    alert("Cashier account successfully authorized and created!");
+                    document.getElementById('regFullName').value = '';
+                    document.getElementById('regId').value = '';
+                    document.getElementById('regPin').value = '';
+                    loadUsers();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to create cashier: " + (err.detail || err.message));
+                }
+            } catch (error) {
+                alert("A network error occurred. Please try again.");
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('fishChart').getContext('2d');
+            fishChart = new Chart(ctx, {
+                type: 'bar',
+                data: { 
+                    labels: [], 
+                    datasets: [{ 
+                        label: 'Quantity Sold', 
+                        data: [], 
+                        backgroundColor: '#3b82f6', 
+                        borderRadius: 6 
+                    }] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false } 
+                    },
+                    scales: { 
+                        y: { 
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }, 
+                            ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } 
+                        }, 
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } 
+                        } 
+                    }
+                }
+            });
+        }
+
+        function logout() { 
+            localStorage.removeItem('access_token'); 
+            window.location.href = 'login.html'; 
+        }
+    </script>
+</body>
+</html>

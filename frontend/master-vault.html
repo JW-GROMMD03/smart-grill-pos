@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Vault | Restricted</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #020617; color: #f8fafc; }
+        .vault-panel { background: #0f172a; border: 1px solid #334155; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center font-mono p-4">
+
+    <div class="vault-panel w-full max-w-md p-8 rounded-lg shadow-2xl relative">
+        <div class="text-center mb-6">
+            <svg class="w-12 h-12 text-rose-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.078 2.027-.231 3.021M15.528 9H14v-.5M12 2a10 10 0 100 20 10 10 0 000-20z"></path></svg>
+            <h1 class="text-xl tracking-widest text-rose-500 font-bold uppercase">Restricted Area</h1>
+            <p class="text-xs text-slate-400 mt-2">Level 4 Authorization Required</p>
+        </div>
+
+        <form id="vaultForm" onsubmit="requestReset(event)" class="space-y-5">
+            <div id="statusAlert" class="hidden text-sm p-3 rounded bg-slate-800 border"></div>
+
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Master Key</label>
+                <input type="password" id="masterKey" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white outline-none focus:border-rose-500 transition">
+            </div>
+
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">New Admin Password</label>
+                <input type="password" id="newPassword" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white outline-none focus:border-rose-500 transition">
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded transition uppercase tracking-widest text-sm mt-4">
+                Initiate Secure Reset
+            </button>
+        </form>
+    </div>
+
+    <script>
+        async function requestReset(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const alert = document.getElementById('statusAlert');
+            const masterKey = document.getElementById('masterKey').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+            alert.classList.add('hidden');
+
+            try {
+                // Sending to a hidden backend route
+                const res = await fetch('/api/v1/auth/master-reset', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-master-key': masterKey 
+                    },
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert.className = "text-sm p-3 rounded bg-emerald-900/50 border border-emerald-500 text-emerald-400";
+                    alert.innerText = "Success: " + data.message;
+                } else {
+                    throw new Error(data.detail || "Authorization Failed.");
+                }
+            } catch (err) {
+                alert.className = "text-sm p-3 rounded bg-rose-900/50 border border-rose-500 text-rose-400";
+                alert.innerText = err.message;
+            } finally {
+                alert.classList.remove('hidden');
+                btn.innerText = "Initiate Secure Reset";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

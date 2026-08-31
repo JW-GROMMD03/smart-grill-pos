@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grill POS | Admin Executive Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { primary: '#6366f1', secondary: '#8b5cf6', dark: '#0f172a', card: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        .glass-panel { background: rgba(255, 255, 255, 1); border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-radius: 1.5rem; transition: all 0.4s ease-in-out; }
+        .dark .glass-panel { background: rgba(30, 41, 59, 1); border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+        .otp-input { letter-spacing: 0.5em; font-family: monospace; text-align: center; font-size: 1.5rem; }
+        .hidden-stage { opacity: 0; pointer-events: none; position: absolute; transform: translateX(20px); }
+        .active-stage { opacity: 1; pointer-events: auto; position: relative; transform: translateX(0); transition: all 0.4s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-brand-dark dark:text-slate-100 font-sans min-h-screen flex items-center justify-center p-4 overflow-hidden">
+
+    <button onclick="toggleTheme()" class="absolute top-6 right-6 p-2 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+        <svg class="w-5 h-5 text-slate-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    </button>
+
+    <div class="glass-panel w-full max-w-md p-8 sm:p-10 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-500 to-brand-secondary"></div>
+        
+        <div class="flex flex-col items-center mb-8">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-brand-secondary flex items-center justify-center shadow-lg mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <h1 class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-rose-500 to-brand-secondary">Smart Grill Admin</h1>
+            <p id="subHeader" class="text-sm font-semibold text-slate-500 uppercase tracking-widest mt-1 transition-all">Executive Access</p>
+        </div>
+
+        <div id="errorAlert" class="hidden bg-rose-50 border border-rose-200 text-rose-600 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-400 px-4 py-3 rounded-lg text-sm font-semibold text-center mb-6"></div>
+
+        <!-- STAGE 1: Credentials -->
+        <form id="stage1" onsubmit="handleLogin(event)" class="space-y-6 active-stage">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Admin Email</label>
+                <input type="email" id="email" required class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Password</label>
+                <div class="relative">
+                    <input type="password" id="password" required class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-4 pr-12 py-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none transition">
+                    <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition outline-none">
+                        <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <!-- Default: Eye Open (showing password is hidden) -->
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" id="loginBtn" class="w-full bg-gradient-to-r from-rose-500 to-brand-secondary hover:from-brand-secondary hover:to-rose-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/30 transform hover:-translate-y-0.5 transition duration-200 flex items-center justify-center">
+                <span id="btnText">Verify & Enter</span>
+                <svg id="btnSpinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </button>
+        </form>
+
+        <!-- STAGE 2: OTP Verification -->
+        <form id="stage2" onsubmit="verifyOTP(event)" class="space-y-6 hidden-stage w-full">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 text-center">Enter 6-Digit Security Code</label>
+                <p class="text-xs text-slate-500 text-center mb-4">Dispatched to your registered email.</p>
+                <input type="text" id="otp" required maxlength="6" pattern="\d{6}" class="otp-input w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-4 text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none transition" placeholder="••••••">
+            </div>
+
+            <button type="submit" id="otpBtn" class="w-full bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-primary/30 transform hover:-translate-y-0.5 transition duration-200 flex items-center justify-center">
+                <span id="otpBtnText">Confirm Authorization</span>
+                <svg id="otpSpinner" class="hidden animate-[spin_0.8s_linear_infinite] ml-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-100" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Explicitly defining the backend URL
+        const BASE_URL = 'http://127.0.0.1:8000';
+
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
+            } else {
+                pwd.type = 'password';
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`;
+            }
+        }
+
+        let activeEmail = "";
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const alert = document.getElementById('errorAlert');
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            btn.disabled = true; document.getElementById('btnText').innerText = "Authenticating...";
+            document.getElementById('btnSpinner').classList.remove('hidden'); alert.classList.add('hidden');
+
+            try {
+                // Fixed routing utilizing BASE_URL
+                const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    activeEmail = email;
+                    document.getElementById('stage1').className = "space-y-6 hidden-stage";
+                    setTimeout(() => {
+                        document.getElementById('stage2').className = "space-y-6 active-stage";
+                        document.getElementById('subHeader').innerText = "2FA Required";
+                        document.getElementById('otp').focus();
+                    }, 300);
+                } else {
+                    throw new Error(data.detail || "Invalid credentials.");
+                }
+            } catch (err) {
+                alert.innerText = err.message === 'Failed to fetch' ? "Network Error. Check backend server." : err.message; 
+                alert.classList.remove('hidden');
+            } finally {
+                btn.disabled = false; document.getElementById('btnText').innerText = "Verify & Enter";
+                document.getElementById('btnSpinner').classList.add('hidden');
+            }
+        }
+
+        async function verifyOTP(e) {
+            e.preventDefault();
+            const btn = document.getElementById('otpBtn');
+            const alert = document.getElementById('errorAlert');
+            const otp = document.getElementById('otp').value.trim();
+
+            btn.disabled = true; document.getElementById('otpBtnText').innerText = "Decrypting...";
+            document.getElementById('otpSpinner').classList.remove('hidden'); alert.classList.add('hidden');
+
+            try {
+                // Fixed routing utilizing BASE_URL
+                const res = await fetch(`${BASE_URL}/api/v1/auth/verify-otp`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: activeEmail, otp: otp })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('access_token', data.token);
+                    document.getElementById('otpBtnText').innerText = "Access Granted";
+                    setTimeout(() => { window.location.href = '/frontend/admin-dashboard.html'; }, 500);
+                } else {
+                    throw new Error(data.detail || "Verification failed.");
+                }
+            } catch (err) {
+                alert.innerText = err.message === 'Failed to fetch' ? "Network Error. Check backend server." : err.message; 
+                alert.classList.remove('hidden');
+                btn.disabled = false; document.getElementById('otpBtnText').innerText = "Confirm Authorization";
+                document.getElementById('otpSpinner').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
