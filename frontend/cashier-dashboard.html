@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Grill — Cashier Terminal</title>
+  
+  <!-- SECURITY GUARD: Instantly kicks out unauthorized users -->
+  <script>
+      if (!localStorage.getItem('sg_token')) {
+          window.location.replace('/index.html');
+      }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="/assets/css/style.css">
@@ -163,19 +171,19 @@
       </div>
       <form onsubmit="submitExpense(event)" class="space-y-4 mt-2">
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description</label>
-          <input type="text" id="expDesc" required placeholder="e.g. Tomatoes for Kachumbari" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description</label>
+            <input type="text" id="expDesc" required placeholder="e.g. Tomatoes for Kachumbari" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Amount (Max 1000)</label>
-          <input type="number" id="expAmt" required max="1000" min="1" placeholder="Amount" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500">
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Amount (Max 1000)</label>
+            <input type="number" id="expAmt" required max="1000" min="1" placeholder="Amount" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500">
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Paid Via</label>
-          <select id="expType" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
-            <option value="Cash">Cash Drawer</option>
-            <option value="Mpesa">M-Pesa / Till</option>
-          </select>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Paid Via</label>
+            <select id="expType" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
+                <option value="Cash">Cash Drawer</option>
+                <option value="Mpesa">M-Pesa / Till</option>
+            </select>
         </div>
         <button type="submit" class="w-full py-3 mt-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded shadow-lg transition">Save Expense</button>
       </form>
