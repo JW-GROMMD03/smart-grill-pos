@@ -95,6 +95,43 @@
         <main class="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50 dark:bg-brand-dark">
             
             <div id="salesTab" class="tab-section space-y-6">
+
+                <!-- DYNAMIC SHIFT CONTROL & OVERLAP PANEL -->
+                <div class="glass-panel p-6 border-l-4 border-l-brand-primary shadow-lg space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Shift Overlap & Dynamic Control Panel</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage early shift starts, late shift arrival permits, and instant shift revocation.</p>
+                        </div>
+                        <div id="shiftStatusBadges" class="flex items-center space-x-2">
+                            <span id="badgeClockShift" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Clock: --</span>
+                            <span id="badgeActiveMode" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Mode: AUTO</span>
+                        </div>
+                    </div>
+
+                    <div id="activePermitNotice" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm flex items-center justify-between">
+                        <span>⚠️ <strong id="permitNoticeText">Active Permit Granted</strong></span>
+                        <button onclick="managePermit('REVOKE', 'OVERLAP', 'DAY')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1 rounded font-bold transition">Stop Permit / Revoke Access</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                        <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
+                            🌅 Start Day Shift Early (7 AM)
+                        </button>
+                        <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
+                            ⏳ Grant Day Shift Extension
+                        </button>
+                        <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
+                            🔄 Allow Shift Overlap
+                        </button>
+                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-xs font-bold py-2.5 px-3 rounded-xl transition text-center">
+                            ⚙️ Reset to Auto Schedule
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div class="glass-panel p-6 col-span-2 relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-none shadow-lg">
@@ -504,13 +541,12 @@
     </div>
 
     <script>
-        // FIXED: Using relative path so it automatically uses your Render URL in production
         const BASE_URL = ''; 
         
         let fishChart;
         let qrScanner;
         let currentTab = 'sales';
-        let adminWs; // Real-time socket reference
+        let adminWs;
         
         const formatKsh = (n) => `KES ${Number(n).toLocaleString()}`;
 
@@ -529,8 +565,6 @@
 
             initChart();
             loadAllData();
-            
-            // REAL-TIME SYNC: Replaces setInterval polling
             connectAdminSocket();
         });
 
@@ -547,11 +581,12 @@
                 if (data.action === 'refresh_sales') {
                     if (currentTab === 'sales') loadSales();
                     if (currentTab === 'analytics') loadDeepBI();
+                } else if (data.action === 'shift_update') {
+                    loadShiftStatus();
                 }
             };
             
             adminWs.onclose = () => {
-                // Auto-reconnect on disconnect
                 setTimeout(connectAdminSocket, 5000);
             };
         }
@@ -631,12 +666,77 @@
         }
 
         function loadAllData() {
+            loadShiftStatus();
             if(currentTab === 'sales') loadSales();
             if(currentTab === 'analytics') loadDeepBI();
             if(currentTab === 'expenses') loadExpenses();
             if(currentTab === 'records') loadComprehensiveRecords();
             if(currentTab === 'menu') loadMenu();
             if(currentTab === 'users') loadUsers();
+        }
+
+        async function loadShiftStatus() {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/shift/status`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                if (!res.ok) return;
+                const status = await res.json();
+
+                document.getElementById('badgeClockShift').innerText = `Clock: ${status.clock_shift}`;
+                
+                const noticeDiv = document.getElementById('activePermitNotice');
+                const noticeText = document.getElementById('permitNoticeText');
+
+                if (status.override) {
+                    document.getElementById('badgeActiveMode').innerText = `Mode: FORCED ${status.override.shift}`;
+                    noticeText.innerText = `System Lock Active: Forced under ${status.override.shift} Shift.`;
+                    noticeDiv.classList.remove('hidden');
+                } else if (status.permit) {
+                    document.getElementById('badgeActiveMode').innerText = `Mode: ${status.permit.permit_type} PERMIT`;
+                    noticeText.innerText = `Shift Permit Active: ${status.permit.permit_type} allowed for ${status.permit.permitted_shift} Shift.`;
+                    noticeDiv.classList.remove('hidden');
+                } else {
+                    document.getElementById('badgeActiveMode').innerText = `Mode: AUTO (${status.effective_shift})`;
+                    noticeDiv.classList.add('hidden');
+                }
+            } catch (err) {}
+        }
+
+        async function managePermit(action, type, shift) {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/shift/permit`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: action, permit_type: type, permitted_shift: shift })
+                });
+                const data = await res.json();
+                alert(data.message || data.detail);
+                loadShiftStatus();
+            } catch (err) {
+                alert("Failed to update shift permit.");
+            }
+        }
+
+        async function forceShift(shift) {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/shift/force`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ shift: shift })
+                });
+                const data = await res.json();
+                alert(data.message || data.detail);
+                loadShiftStatus();
+            } catch (err) {
+                alert("Failed to update shift force mode.");
+            }
         }
 
         async function loadSales() {

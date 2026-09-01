@@ -15,6 +15,114 @@ from app.core.shift_engine import ShiftEngine
 router = APIRouter()
 
 # ==========================================
+# SHIFT OVERLAP & PERMIT CONTROL
+# ==========================================
+
+class ShiftPermitRequest(BaseModel):
+    permit_type: str  # "EXTENSION", "EARLY_START", "OVERLAP"
+    permitted_shift: str  # "DAY", "NIGHT"
+    action: str  # "GRANT", "REVOKE"
+
+class ShiftForceRequest(BaseModel):
+    shift: str  # "DAY", "NIGHT", "AUTO"
+
+@router.get("/shift/status")
+async def get_shift_status(admin=Depends(SecurityEngine.verify_token)):
+    """Returns the current clock shift, system active shift, permits, and forced overrides."""
+    (clock_shift, clock_bdate), _, in_grace = ShiftEngine.get_shift_context()
+    eff_shift, eff_bdate, is_overridden = await ShiftEngine.get_effective_shift_context()
+    
+    active_shift_id = await redis_client.get("system:active_shift")
+    if isinstance(active_shift_id, bytes):
+        active_shift_id = active_shift_id.decode('utf-8')
+
+    permit_raw = await redis_client.get("system:shift_permit")
+    active_permit = json.loads(permit_raw.decode('utf-8') if isinstance(permit_raw, bytes) else permit_raw) if permit_raw else None
+
+    override_raw = await redis_client.get("system:shift_override")
+    active_override = json.loads(override_raw.decode('utf-8') if isinstance(override_raw, bytes) else override_raw) if override_raw else None
+
+    return {
+        "clock_shift": clock_shift,
+        "clock_bdate": clock_bdate,
+        "effective_shift": eff_shift,
+        "effective_bdate": eff_bdate,
+        "in_grace_period": in_grace,
+        "active_shift_id": active_shift_id,
+        "permit": active_permit,
+        "override": active_override,
+        "is_overridden": is_overridden
+    }
+
+@router.post("/shift/permit")
+async def manage_shift_permit(payload: ShiftPermitRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
+    """Grants or revokes dynamic shift permits (Early Day Start, Extension, or Overlap)."""
+    admin_id = admin.get("sub")
+    action = payload.action.upper()
+
+    if action == "GRANT":
+        permit_data = {
+            "status": "ACTIVE",
+            "permit_type": payload.permit_type.upper(),
+            "permitted_shift": payload.permitted_shift.upper(),
+            "granted_by": admin_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await redis_client.set("system:shift_permit", json.dumps(permit_data))
+        
+        # If Early Start for DAY shift, force-lock the night shift out immediately
+        if payload.permit_type.upper() == "EARLY_START" and payload.permitted_shift.upper() == "DAY":
+            tz = timezone(timedelta(hours=3))
+            now_dt = datetime.now(tz)
+            curr_id = f"{now_dt.date()}-DAY"
+            await redis_client.set("system:active_shift", curr_id)
+
+        # Notify cashiers and admins via WebSocket
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "shift_update", "permit": permit_data})
+
+        return {"status": "success", "message": f"Shift permit ({payload.permit_type}) successfully granted.", "permit": permit_data}
+
+    elif action == "REVOKE":
+        await redis_client.delete("system:shift_permit")
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "shift_update", "permit": None})
+
+        return {"status": "success", "message": "Shift permit revoked. Regular time enforcement restored."}
+
+    raise HTTPException(status_code=400, detail="Invalid permit action.")
+
+@router.post("/shift/force")
+async def force_shift_mode(payload: ShiftForceRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
+    """Manually locks system operation into DAY or NIGHT shift, or resets to AUTO."""
+    target_shift = payload.shift.upper()
+
+    if target_shift in ["DAY", "NIGHT"]:
+        override_data = {
+            "shift": target_shift,
+            "mode": "FORCED",
+            "set_by": admin.get("sub"),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await redis_client.set("system:shift_override", json.dumps(override_data))
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "shift_update", "override": override_data})
+
+        return {"status": "success", "message": f"System manually locked to {target_shift} shift."}
+
+    elif target_shift in ["AUTO", "RESET"]:
+        await redis_client.delete("system:shift_override")
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "shift_update", "override": None})
+
+        return {"status": "success", "message": "System shift schedule restored to automatic time tracking."}
+
+    raise HTTPException(status_code=400, detail="Invalid shift force mode.")
+
+# ==========================================
 # ADMIN PROFILE MANAGEMENT
 # ==========================================
 
@@ -104,7 +212,7 @@ async def add_menu_item(
         "price": price, 
         "is_active": True
     }
-    if category.lower() == "meat" and sub_category:
+    if category.lower() == "meat cuts" and sub_category:
         payload["sub_category"] = sub_category.lower()
 
     try:
@@ -175,7 +283,6 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
         supabase.table("cashiers").update(update_data).eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
 
-        # LIVE SYNC: Instantly terminate active cashier session
         if payload.status.upper() == 'BLOCKED':
             if hasattr(request.app.state, 'sockets'):
                 await request.app.state.sockets.force_logout_cashier(user_id, payload.reason)
@@ -190,7 +297,6 @@ async def delete_user_account(user_id: str, request: Request, admin=Depends(Secu
         supabase.table("cashiers").delete().eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
         
-        # LIVE SYNC: Instantly terminate active cashier session on deletion
         if hasattr(request.app.state, 'sockets'):
             await request.app.state.sockets.force_logout_cashier(user_id, "Your account has been permanently removed by the Admin.")
             
@@ -235,7 +341,6 @@ async def create_admin_expense(payload: ExpenseCreate, request: Request, admin=D
         for key in await redis_client.keys("smartgrill:deep_bi:*"):
             await redis_client.delete(key)
             
-        # LIVE SYNC: Push updates to Admin Dashboard
         if hasattr(request.app.state, 'sockets'):
             await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
             
@@ -419,7 +524,6 @@ async def get_live_sales(
             "recent_transactions": sales[:100] 
         }
         
-        # INCREASED CACHE EXPIRY TO 60 SECONDS
         await redis_client.setex(cache_key, 60, json.dumps(payload)) 
         return payload
         
@@ -584,7 +688,6 @@ async def get_deep_analytics(
             "drinks": drinks
         }
 
-        # INCREASED CACHE EXPIRY TO 60 SECONDS
         await redis_client.setex(cache_key, 60, json.dumps(payload))
         return payload
 
@@ -645,6 +748,9 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
         if not data:
             raise HTTPException(status_code=400, detail="Invalid or expired deletion token.")
             
+        if isinstance(data, bytes):
+            data = data.decode('utf-8')
+
         req = json.loads(data)
         if req.get("status") == "approved":
             raise HTTPException(status_code=400, detail="This deletion was already authorized.")
@@ -669,6 +775,8 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
                 k = k.decode('utf-8')
             k_data = await redis_client.get(k)
             if k_data:
+                if isinstance(k_data, bytes):
+                    k_data = k_data.decode('utf-8')
                 k_req = json.loads(k_data)
                 if str(k_req.get("target_id")) == str(target_id):
                     k_req["status"] = "approved"
@@ -679,7 +787,6 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
         for key in await redis_client.keys("smartgrill:*"):
             await redis_client.delete(key)
             
-        # LIVE SYNC: Push updates to Admin Dashboard after successful deletion
         if hasattr(request.app.state, 'sockets'):
             await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
             

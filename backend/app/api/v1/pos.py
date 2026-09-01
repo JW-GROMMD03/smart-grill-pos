@@ -17,6 +17,8 @@ router = APIRouter()
 async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
     cached_menu = await redis_client.get("cache:menu_v4")
     if cached_menu:
+        if isinstance(cached_menu, bytes):
+            cached_menu = cached_menu.decode('utf-8')
         return json.loads(cached_menu)
     
     res = supabase.table("menu_items").select("*").eq("is_active", True).execute()
@@ -42,7 +44,7 @@ async def process_checkout(
         ReportEngine.generate_and_email_shift_report
     )
 
-    if order.payment_method == "partial":
+    if order.payment_method.lower() == "partial":
         if round(order.cash_amount + order.mpesa_amount, 2) != round(order.total_amount, 2):
             raise HTTPException(status_code=400, detail="Cash and M-Pesa amounts must tally exactly with total amount.")
 
@@ -84,6 +86,8 @@ async def process_checkout(
 
         return {"status": "success", "order_id": sale_id, "shift": active_shift, "business_date": business_date}
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Checkout execution failed: {str(e)}")
 
 @router.get("/my-sales")
@@ -188,5 +192,7 @@ async def check_delete_status(token: str, user: dict = Depends(SecurityEngine.ve
     if not data:
         return {"status": "expired"}
         
+    if isinstance(data, bytes):
+        data = data.decode('utf-8')
     parsed = json.loads(data)
     return {"status": parsed.get("status")}

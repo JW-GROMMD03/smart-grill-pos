@@ -10,6 +10,7 @@ from app.core.supabase import supabase
 from app.core.security import SecurityEngine
 from app.core.redis import redis_client
 from app.core.config import settings
+from app.core.shift_engine import ShiftEngine
 
 router = APIRouter()
 
@@ -81,6 +82,9 @@ async def verify_otp(payload: OTPVerifySchema):
     if not cached_data:
         raise HTTPException(status_code=401, detail="Invalid or expired security code.")
     
+    if isinstance(cached_data, bytes):
+        cached_data = cached_data.decode('utf-8')
+
     await redis_client.delete(cache_key)
     return json.loads(cached_data)
 
@@ -121,17 +125,15 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
             reason = cashier.get("block_reason", "Account suspended. Contact Admin.")
             raise HTTPException(status_code=403, detail=f"ACCESS DENIED: {reason}")
 
-        # 2. STRICT ACCESS CONTROL: Validate Current Shift (Mombasa Time EAT is UTC+3)
-        eat_time = datetime.now(timezone.utc) + timedelta(hours=3)
-        current_hour = eat_time.hour
-        # Day Shift: 06:00 to 17:59 | Night Shift: 18:00 to 05:59
-        active_server_shift = "Day" if 6 <= current_hour < 18 else "Night"
-        
-        if cashier.get("assigned_shift") != active_server_shift:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"SHIFT LOCKOUT: You are assigned to the '{cashier.get('assigned_shift')}' shift. The current server shift is '{active_server_shift}'."
-            )
+        # 2. DYNAMIC ACCESS CONTROL: Validate Current Shift Access via ShiftEngine
+        assigned_shift = str(cashier.get("assigned_shift", "Day")).strip().upper()
+        if assigned_shift in ["DAY SHIFT", "DAY_SHIFT"]:
+            assigned_shift = "DAY"
+        elif assigned_shift in ["NIGHT SHIFT", "NIGHT_SHIFT"]:
+            assigned_shift = "NIGHT"
+
+        # Validate shift access; throws 403 if locked out
+        await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift)
 
         if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
             raise ValueError("Invalid credentials")
@@ -157,5 +159,5 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         raise HTTPException(status_code=401, detail="Invalid username or PIN.")
     except HTTPException as he:
         raise he
-    except Exception:
-        raise HTTPException(status_code=500, detail="Database connection error.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
