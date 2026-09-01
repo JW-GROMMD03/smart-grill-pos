@@ -19,43 +19,78 @@ function logoutDueToInactivity() {
     document.addEventListener(evt, resetInactivityTimer)
 );
 
-document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('username').value.trim();
-    const pin = document.getElementById('pin').value.trim();
-    const alertBox = document.getElementById('alertBox');
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value.trim();
+        const pin = document.getElementById('pin').value.trim();
+        
+        const alertBox = document.getElementById('alertBox');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
 
-    try {
-        const response = await fetch(`${API_URL}/cashier-login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, pin })
-        });
+        // Reset UI to loading state
+        alertBox.classList.add('hidden');
+        submitBtn.disabled = true;
+        btnSpinner.classList.remove('hidden');
+        btnText.textContent = 'AUTHENTICATING...';
 
-        const data = await response.json();
+        try {
+            const response = await fetch(`${API_URL}/cashier-login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, pin })
+            });
 
-        if (!response.ok) {
-            // Handle specific Admin restrictions
-            if (data.detail && data.detail.toLowerCase().includes("suspended")) {
-                alertBox.innerText = "This account has been restricted by the Admin.";
+            const data = await response.json();
+
+            if (response.ok && (data.token || data.access_token)) {
+                // Support both key names depending on backend response
+                const token = data.token || data.access_token;
+                
+                localStorage.setItem('sg_token', token);
+                localStorage.setItem('sg_user', JSON.stringify(data));
+                
+                // Prevent redirect loops by ensuring clean routing
+                window.location.replace('/cashier-dashboard.html');
+                
             } else {
-                alertBox.innerText = data.detail || 'Login failed.';
-            }
-            alertBox.classList.remove('hidden');
-            return;
-        }
+                // Intelligent Error Parser
+                let errorMsg = "Authentication Failed";
+                if (data.detail) {
+                    if (typeof data.detail === 'string') {
+                        errorMsg = data.detail;
+                    } else if (Array.isArray(data.detail)) {
+                        errorMsg = data.detail.map(err => err.msg || JSON.stringify(err)).join(" | ");
+                    } else if (typeof data.detail === 'object') {
+                        errorMsg = data.detail.message || data.detail.error || JSON.stringify(data.detail);
+                    }
+                } else if (data.message) {
+                    errorMsg = data.message;
+                }
 
-        localStorage.setItem('sg_token', data.token);
-        localStorage.setItem('sg_user', JSON.stringify(data));
-        
-        // Prevent redirect loops by ensuring clean routing
-        window.location.replace('/cashier-dashboard.html');
-        
-    } catch (err) {
-        alertBox.innerText = 'Server connection error.';
-        alertBox.classList.remove('hidden');
-    }
-});
+                // Handle specific Admin restrictions
+                if (errorMsg.toLowerCase().includes("suspended")) {
+                    errorMsg = "This account has been restricted by the Admin.";
+                }
+                
+                alertBox.innerText = errorMsg;
+                alertBox.classList.remove('hidden');
+            }
+        } catch (err) {
+            alertBox.innerText = 'Server connection error.';
+            alertBox.classList.remove('hidden');
+        } finally {
+            // Restore UI state
+            submitBtn.disabled = false;
+            btnSpinner.classList.add('hidden');
+            btnText.textContent = 'SIGN IN TO POS TERMINAL';
+        }
+    });
+}
 
 // Initialize timer if logged in
 if (localStorage.getItem('sg_token')) {
