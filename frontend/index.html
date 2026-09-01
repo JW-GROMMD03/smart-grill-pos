@@ -1,3 +1,4 @@
+<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,22 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Grill — Secure Portal Login</title>
   
-  <!-- BRANDING: SVG Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
-  
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="min-h-screen flex items-center justify-center relative p-4">
+<body class="min-h-screen flex items-center justify-center relative p-4 bg-slate-900">
 
-  <!-- Background Aesthetics -->
   <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent_50%)]"></div>
 
-  <div class="glass-panel max-w-md w-full p-8 rounded-2xl shadow-2xl relative z-10 space-y-6">
+  <div class="bg-slate-800/50 backdrop-blur-md border border-slate-700 max-w-md w-full p-8 rounded-2xl shadow-2xl relative z-10 space-y-6">
     <div class="text-center space-y-2">
       <div class="inline-block p-3 rounded-full bg-amber-500/10 text-amber-500 mb-2">🔥</div>
       <h1 class="text-2xl font-extrabold tracking-wider text-white">SMART GRILL POS</h1>
-      <p class="text-xs text-slate-400">Authorized Personnel Sign In</p>
+      <p class="text-xs text-slate-400">Cashier Terminal Login</p>
     </div>
 
     <div id="alertBox" class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold text-center"></div>
@@ -28,20 +25,90 @@
     <form id="loginForm" class="space-y-4">
       <div>
         <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Username</label>
-        <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+        <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
       </div>
 
       <div>
         <label class="block text-xs font-bold text-slate-300 uppercase mb-2">4-Digit PIN</label>
-        <input type="password" id="pin" required maxlength="4" class="w-full px-4 py-3 bg-slate-900/90 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition tracking-[0.5em] text-center font-mono">
+        <input type="password" id="pin" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition tracking-widest text-center font-mono">
       </div>
 
-      <button type="submit" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-lg active:scale-95 text-sm">
-        SIGN IN TO POS TERMINAL
+      <button type="submit" id="submitBtn" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-lg active:scale-95 text-sm flex justify-center items-center">
+        <!-- SVG Spinner -->
+        <svg id="btnSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-slate-950 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span id="btnText">SIGN IN TO POS TERMINAL</span>
       </button>
     </form>
+    
+    
   </div>
 
-  <script src="assets/js/auth.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value.trim();
+        const pin = document.getElementById('pin').value.trim();
+        const alertBox = document.getElementById('alertBox');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+
+        alertBox.classList.add('hidden');
+        submitBtn.disabled = true;
+        btnSpinner.classList.remove('hidden');
+        btnText.textContent = 'AUTHENTICATING...';
+
+        try {
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', pin);
+
+            const BASE_URL = ''; 
+            
+            const response = await fetch(`${BASE_URL}/api/v1/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.access_token) {
+                localStorage.setItem('sg_token', data.access_token);
+                
+                const base64Url = data.access_token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                const payload = JSON.parse(jsonPayload);
+                
+                if (payload.role === 'admin') {
+                    window.location.href = '/admin-dashboard.html';
+                } else if (payload.role === 'cashier') {
+                    window.location.href = '/cashier-dashboard.html';
+                } else {
+                    throw new Error("Invalid role assigned to account.");
+                }
+            } else {
+                alertBox.textContent = data.detail || "Authentication Failed";
+                alertBox.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+            alertBox.textContent = "Network error. Unable to connect to server.";
+            alertBox.classList.remove('hidden');
+        } finally {
+            submitBtn.disabled = false;
+            btnSpinner.classList.add('hidden');
+            btnText.textContent = 'SIGN IN TO POS TERMINAL';
+        }
+    });
+  </script>
 </body>
 </html>

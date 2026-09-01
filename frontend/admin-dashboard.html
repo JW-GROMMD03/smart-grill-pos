@@ -13,7 +13,7 @@
     <script>
         const token = localStorage.getItem('sg_token');
         if (!token) {
-            window.location.replace('/index.html');
+            window.location.replace('/login.html');
         } else {
             try {
                 // Safely decode JWT payload
@@ -26,11 +26,11 @@
                 
                 // If the user is a cashier, redirect them immediately to prevent API crashes
                 if (payload.role !== 'admin') {
-                    window.location.replace('/index.html');
+                    window.location.replace('/login.html');
                 }
             } catch(e) {
                 localStorage.removeItem('sg_token');
-                window.location.replace('/index.html');
+                window.location.replace('/login.html');
             }
         }
     </script>

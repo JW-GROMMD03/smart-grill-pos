@@ -1,3 +1,4 @@
+<!-- frontend/cashier-dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,14 +6,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Grill — Cashier Terminal</title>
   
-  <!-- BRANDING: SVG Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
   
-  <!-- SECURITY GUARD: Instantly kicks out unauthorized users -->
   <script>
+      // 1. SECURITY GUARD: Instantly kicks out unauthorized users
       if (!localStorage.getItem('sg_token')) {
           window.location.replace('/index.html');
       }
+
+      // 2. GLOBAL FETCH INTERCEPTOR: Catches 401/403 errors globally before pos.js can show the "Shift Locked" alert.
+      const originalFetch = window.fetch;
+      window.fetch = async function(...args) {
+          try {
+              const response = await originalFetch.apply(this, args);
+              if (response.status === 401 || response.status === 403) {
+                  localStorage.removeItem('sg_token');
+                  localStorage.removeItem('sg_user');
+                  window.location.replace('/index.html');
+                  // Return a never-resolving promise to halt the rest of the JS execution in pos.js
+                  return new Promise(() => {});
+              }
+              return response;
+          } catch (error) {
+              throw error;
+          }
+      };
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -21,7 +39,7 @@
 </head>
 <body class="h-screen flex bg-slate-950 overflow-hidden relative">
 
-  <!-- SECURITY OVERLAY: Shift Lockout / Blocked User -->
+  <!-- SECURITY OVERLAY -->
   <div id="shiftLockoutOverlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-6">
       <div class="text-7xl mb-4">⛔</div>
       <h1 class="text-3xl font-black text-red-500 tracking-wider text-center mb-2">ACCESS REVOKED</h1>
@@ -64,7 +82,6 @@
     </div>
   </aside>
 
-  <!-- Main POS Area -->
   <div class="flex-1 flex flex-col min-w-0 h-full relative">
     <header class="glass-panel px-4 py-3 border-b border-slate-800 flex justify-between items-center z-30 lg:hidden">
       <div class="flex items-center gap-3">
@@ -74,15 +91,10 @@
     </header>
 
     <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 h-full overflow-hidden">
-      
-      <!-- Dynamic Database Menu Grid -->
       <div class="col-span-1 lg:col-span-8 overflow-y-auto pr-2 pb-20">
-        <div id="dynamicMenuGrid" class="w-full">
-          <!-- Javascript populates the exact layout here -->
-        </div>
+        <div id="dynamicMenuGrid" class="w-full"></div>
       </div>
 
-      <!-- Cart & Billing Engine -->
       <div class="col-span-1 lg:col-span-4 glass-panel p-5 rounded-2xl flex flex-col shadow-2xl border border-slate-800 h-full">
         <div class="flex-1 flex flex-col overflow-hidden">
           <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
@@ -128,21 +140,15 @@
     </main>
   </div>
 
-  <!-- QUANTITY DROPDOWN MODAL -->
   <div id="qtyModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
     <div class="glass-panel p-6 rounded-2xl w-full max-w-xs shadow-2xl border border-slate-700 text-center">
       <h3 class="font-extrabold text-sm text-slate-300 uppercase mb-4">Select Quantity for <br><span class="text-amber-400 text-lg" id="qtyItemName"></span></h3>
-      
       <select id="qtySelect" class="w-full bg-slate-900 border border-slate-700 text-amber-400 rounded-lg p-3 mb-6 text-center text-xl font-black focus:outline-none focus:border-amber-500">
         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
         <option value="4">4</option><option value="5">5</option><option value="6">6</option>
         <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-        <option value="10">10</option><option value="11">11</option><option value="12">12</option>
-        <option value="13">13</option><option value="14">14</option><option value="15">15</option>
-        <option value="16">16</option><option value="17">17</option><option value="18">18</option>
-        <option value="19">19</option><option value="20">20</option>
+        <option value="10">10</option>
       </select>
-      
       <div class="flex gap-2">
         <button onclick="toggleModal('qtyModal')" class="flex-1 py-3 bg-slate-800 text-slate-300 rounded-lg font-bold hover:bg-slate-700 transition">Cancel</button>
         <button onclick="confirmQtyAdd()" class="flex-1 py-3 bg-amber-500 text-slate-950 rounded-lg font-black hover:bg-amber-400 transition shadow-lg">ADD</button>
@@ -150,7 +156,6 @@
     </div>
   </div>
 
-  <!-- Holds Modal -->
   <div id="holdsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
     <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
       <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
@@ -161,7 +166,6 @@
     </div>
   </div>
 
-  <!-- Receipts & Expenses -->
   <div id="receiptsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
     <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
       <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
@@ -172,7 +176,6 @@
     </div>
   </div>
 
-  <!-- Expenses Modal -->
   <div id="expensesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
     <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700">
       <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
@@ -200,7 +203,6 @@
     </div>
   </div>
 
-  <!-- Admin Verification Auth Modal -->
   <div id="adminModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center z-50">
     <div class="glass-panel p-8 rounded-2xl max-w-sm w-full text-center space-y-4 border border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.15)]">
       <h3 class="font-extrabold text-sm text-slate-200 uppercase tracking-wider">🔒 Admin Authorization</h3>
