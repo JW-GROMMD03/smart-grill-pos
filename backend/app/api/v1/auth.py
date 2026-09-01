@@ -120,9 +120,14 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         
         cashier = res.data[0]
         
-        # 1. STRICT ACCESS CONTROL: Check Blocked Status
-        if cashier.get("status") == "BLOCKED":
-            reason = cashier.get("block_reason", "Account suspended. Contact Admin.")
+        # 1. STRICT ACCESS CONTROL: Normalize status check to handle case variations
+        status = str(cashier.get("status") or "ACTIVE").strip().upper()
+        
+        if status == "DELETED":
+            raise ValueError("Invalid credentials") # Treat deleted accounts as non-existent
+            
+        if status == "BLOCKED":
+            reason = cashier.get("block_reason") or "Account suspended. Contact Admin."
             raise HTTPException(status_code=403, detail=f"ACCESS DENIED: {reason}")
 
         # 2. DYNAMIC ACCESS CONTROL: Validate Current Shift Access via ShiftEngine

@@ -258,7 +258,8 @@ async def delete_menu_item(item_id: str, admin=Depends(SecurityEngine.verify_tok
 @router.get("/users")
 async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
     try:
-        res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").execute()
+        # Filter out DELETED users so they disappear from the admin dashboard
+        res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").neq("status", "DELETED").execute()
         return res.data or []
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
@@ -295,7 +296,8 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
 @router.delete("/users/{user_id}")
 async def delete_user_account(user_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
-        supabase.table("cashiers").delete().eq("id", user_id).execute()
+        # Implementing a SOFT DELETE to avoid breaking PostgreSQL Foreign Key constraints on past sales
+        supabase.table("cashiers").update({"status": "DELETED"}).eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
         
         if hasattr(request.app.state, 'sockets'):
@@ -714,7 +716,8 @@ async def register_cashier(
             "full_name": full_name, 
             "username": username, 
             "pin_hash": pin_hash, 
-            "assigned_shift": assigned_shift
+            "assigned_shift": assigned_shift,
+            "status": "ACTIVE"
         }).execute()
         return {"status": "success"}
     except Exception as e:
