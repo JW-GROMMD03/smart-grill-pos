@@ -2,11 +2,12 @@
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-import bcrypt  # <-- Using raw bcrypt instead of passlib
+import bcrypt  
 from datetime import datetime, timezone, timedelta
 import redis.exceptions
 from app.core.config import settings
-from app.core.redis import redis_client  # Use centralized, SSL-enabled client
+from app.core.redis import redis_client  
+from app.core.supabase import supabase
 
 security = HTTPBearer()
 
@@ -14,11 +15,9 @@ class SecurityEngine:
     @staticmethod
     def hash_password(password: str) -> str:
         """Hashes a plaintext PIN/password using raw bcrypt."""
-        # bcrypt requires bytes, so we encode the string
         pwd_bytes = password.encode('utf-8')
         salt = bcrypt.gensalt()
         hashed_bytes = bcrypt.hashpw(pwd_bytes, salt)
-        # return as a standard string for database storage
         return hashed_bytes.decode('utf-8')
 
     @staticmethod
@@ -41,7 +40,7 @@ class SecurityEngine:
                     detail=f"Too many failed attempts. Account locked. Try again in {minutes} minutes."
                 )
         except (redis.exceptions.ConnectionError, redis.exceptions.RedisError):
-            pass  # Fallback gracefully to avoid 500 crashes if Redis drops
+            pass
 
     @staticmethod
     async def record_failed_attempt(ip_or_user: str) -> None:
@@ -49,18 +48,11 @@ class SecurityEngine:
         lockout_key = f"login_lockout:{ip_or_user}"
         try:
             attempts = await redis_client.incr(attempts_key)
-            
-            # If it's the first failed attempt, set the strike counter to expire in 1 hour
             if attempts == 1:
                 await redis_client.expire(attempts_key, 3600)
-                
-            # TRIGGER LOCKOUT: Exactly on the 3rd failed attempt
             if attempts >= 3:
-                # Lock out for 1 hour (3600 seconds)
                 await redis_client.setex(lockout_key, 3600, "locked")
-                # Wipe strikes clean so they start fresh after lockout ends
                 await redis_client.delete(attempts_key)
-                
         except (redis.exceptions.ConnectionError, redis.exceptions.RedisError):
             pass
 
@@ -75,7 +67,6 @@ class SecurityEngine:
     @staticmethod
     def create_access_token(data: dict) -> str:
         payload = data.copy()
-        # Use timezone-aware UTC datetime (datetime.utcnow() is deprecated)
         payload.update({"exp": datetime.now(timezone.utc) + timedelta(hours=12)})
         return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
@@ -92,3 +83,17 @@ class SecurityEngine:
             raise HTTPException(status_code=401, detail="Session expired.")
         except jwt.PyJWTError:
             raise HTTPException(status_code=401, detail="Invalid auth token.")
+
+    @staticmethod
+    async def log_event(event_type: str, user_id: str, username: str, description: str) -> None:
+        """Logs security and administrative audit events into Supabase."""
+        try:
+            supabase.table("audit_logs").insert({
+                "event_type": event_type,
+                "user_id": user_id,
+                "username": username,
+                "description": description,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        except Exception:
+            pass
