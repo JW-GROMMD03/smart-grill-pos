@@ -674,7 +674,6 @@
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 
-                // Add explicit error handling to prevent API crashes when unauthorized
                 if (res.status === 401 || res.status === 403) {
                     logout();
                     return null;
@@ -767,7 +766,7 @@
 
         async function loadSales() {
             const data = await apiCall('/sales/live');
-            if (!data) return; // Prevent TypeError if API fails
+            if (!data) return;
             
             document.getElementById('cashAtHand').innerText = formatKsh(data.cash_at_hand || 0);
             document.getElementById('cashSales').innerText = formatKsh(data.cash_sales || 0);
@@ -805,7 +804,7 @@
 
         async function loadDeepBI() {
             const data = await apiCall('/analytics/deep');
-            if (!data) return; // Prevent TypeError
+            if (!data) return;
             
             const meats = ['beef', 'mbuzi', 'chicken'];
             meats.forEach(m => {
@@ -885,7 +884,6 @@
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 
-                // CRITICAL FIX: Safe error handling so the frontend doesn't crash on 403
                 if (!res.ok) {
                     if (res.status === 401 || res.status === 403) logout();
                     console.error("Failed to fetch expenses");
@@ -906,7 +904,6 @@
 
                 const cashierDiv = document.getElementById('cashierExpenseBreakdown');
                 
-                // CRITICAL FIX: Ensure cashier_breakdown exists before calling Object.entries
                 if (data.cashier_breakdown && typeof data.cashier_breakdown === 'object') {
                     cashierDiv.innerHTML = Object.entries(data.cashier_breakdown).map(([name, amt]) => `
                         <div class="flex justify-between p-3 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
@@ -1053,18 +1050,15 @@
             document.getElementById('blockModal').classList.add('hidden');
         }
 
-        // --- UPDATED BLOCK & STATUS LOGIC START --- //
         async function executeBlockUser() {
             const userId = document.getElementById('blockTargetUserId').value;
             const type = document.getElementById('blockDurationType').value;
             let days = type === 'days' ? parseInt(document.getElementById('blockDaysCount').value) : null;
             
-            // Safeguard: Ensure empty inputs are sent as null, not NaN, to avoid 422 errors
             if (isNaN(days)) {
                 days = null;
             }
 
-            // Fallback reason if empty
             const reason = document.getElementById('blockReasonText').value || 'Account suspended. Please contact manager.';
 
             await updateUserStatus(userId, 'BLOCKED', days, reason);
@@ -1076,7 +1070,7 @@
                 const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
                     method: 'PATCH',
                     headers: { 
-                        'Content-Type': 'application/json', // Mandatory Header
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('sg_token')}`
                     },
                     body: JSON.stringify({ 
@@ -1098,7 +1092,6 @@
                 alert("Network error occurred.");
             }
         }
-        // --- UPDATED BLOCK & STATUS LOGIC END --- //
 
         async function deleteUser(userId) {
             if(!confirm("Permanently delete this user account?")) return;
@@ -1132,24 +1125,47 @@
         }
 
         async function addMenuItem() {
-            const name = encodeURIComponent(document.getElementById('menuName').value);
-            const cat = encodeURIComponent(document.getElementById('menuCategory').value);
-            const sub = encodeURIComponent(document.getElementById('menuSubCategory').value);
-            const price = document.getElementById('menuPrice').value;
+            const name = document.getElementById('menuName').value.trim();
+            const category = document.getElementById('menuCategory').value;
+            const subCategory = document.getElementById('menuSubCategory').value;
+            const price = parseFloat(document.getElementById('menuPrice').value);
             
-            let url = `${BASE_URL}/api/v1/admin/menu?name=${name}&category=${cat}&price=${price}`;
-            if(document.getElementById('menuCategory').value === 'MEAT CUTS') {
-                url += `&sub_category=${sub}`;
+            if (!name || isNaN(price) || price <= 0) {
+                alert("Please enter a valid item name and price.");
+                return;
             }
-            
-            await fetch(url, { 
-                method: 'POST', 
-                headers: {'Authorization': `Bearer ${localStorage.getItem('sg_token')}`} 
-            });
-            
-            document.getElementById('menuName').value = '';
-            document.getElementById('menuPrice').value = '';
-            loadMenu();
+
+            const payload = {
+                name: name,
+                category: category,
+                price: price
+            };
+
+            if (category === 'MEAT CUTS') {
+                payload.sub_category = subCategory;
+            }
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/menu`, { 
+                    method: 'POST', 
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    document.getElementById('menuName').value = '';
+                    document.getElementById('menuPrice').value = '';
+                    loadMenu();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to add item: " + (err.detail || err.message || "Unknown error"));
+                }
+            } catch (error) {
+                alert("Network error while trying to add menu item.");
+            }
         }
 
         async function toggleMenu(id, state) {
