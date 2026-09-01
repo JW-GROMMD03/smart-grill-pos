@@ -1271,7 +1271,8 @@
             if(res.ok) {
                 const data = await res.json();
                 document.getElementById('profName').value = data.full_name || '';
-                document.getElementById('profEmail').value = data.username || settings.SMTP_EMAIL;
+                // Fixed: Use the authenticated account email/username from the profile API response instead of an undefined global settings variable
+                document.getElementById('profEmail').value = data.username || data.email || 'smartgrill2026@gmail.com';
                 document.getElementById('profPass').value = '';
             }
         }
