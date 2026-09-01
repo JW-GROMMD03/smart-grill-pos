@@ -3,6 +3,8 @@ import random
 import string
 import uuid
 import calendar
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Union
 
@@ -210,9 +212,24 @@ async def terminal_initiate_reset(payload: VaultResetInit, request: Request):
     token = serializer.dumps(payload.admin_email, salt="vault-reset-salt")
     reset_link = f"https://smartgrillpos.com/master-vault.html?token={token}"
 
+    # Dispatch email directly via SMTP
+    msg = EmailMessage()
+    msg.set_content(f"Level 4 Vault Reset requested from Terminal.\n\nAccess your secure portal to answer validation questions:\n{reset_link}\n\nLink expires in 15 minutes.")
+    msg['Subject'] = "CRITICAL: Admin Vault Password Reset Request"
+    msg['From'] = "smartgrill2026@gmail.com"
+    msg['To'] = payload.admin_email
+
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login("smartgrill2026@gmail.com", "YOUR_EMAIL_OR_APP_PASSWORD")
+            server.send_message(msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to dispatch email: {str(e)}")
+
     return {
         "status": "success", 
-        "message": "Encrypted reset token generated successfully.", 
+        "message": "Encrypted reset link successfully emailed to admin.", 
         "secure_token": token,
         "reset_link": reset_link
     }
@@ -939,4 +956,4 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
         
     except Exception as e:
         if isinstance(e, HTTPException): raise e
-        raise HTTPException(status_code=500, detail=f"Authorization execution failed: {str(e)}")
+        raise HTTPException(status_status=500, detail=f"Authorization execution failed: {str(e)}")
