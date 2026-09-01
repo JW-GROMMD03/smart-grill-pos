@@ -1264,16 +1264,23 @@
         async function openProfile() {
             document.getElementById('profileModal').classList.remove('hidden');
             
-            const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, { 
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` } 
-            });
-            
-            if(res.ok) {
-                const data = await res.json();
-                document.getElementById('profName').value = data.full_name || '';
-                // Fixed: Use the authenticated account email/username from the profile API response instead of an undefined global settings variable
-                document.getElementById('profEmail').value = data.username || data.email || 'smartgrill2026@gmail.com';
-                document.getElementById('profPass').value = '';
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, { 
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` } 
+                });
+                
+                if(res.ok) {
+                    const data = await res.json();
+                    document.getElementById('profName').value = data.full_name || '';
+                    document.getElementById('profEmail').value = data.username || data.email || data.sub || 'smartgrill2026@gmail.com';
+                    document.getElementById('profPass').value = '';
+                } else {
+                    console.error("Failed to load profile data, status:", res.status);
+                    document.getElementById('profEmail').value = 'Error loading profile';
+                }
+            } catch (err) {
+                console.error("Network error fetching profile:", err);
+                document.getElementById('profEmail').value = 'Network error';
             }
         }
 
