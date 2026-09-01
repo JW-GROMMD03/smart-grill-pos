@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from app.core.redis import redis_client
 from app.core.security import SecurityEngine
@@ -160,7 +160,7 @@ class UserBlockRequest(BaseModel):
     reason: Optional[str] = "Please contact manager for clarification."
 
 @router.patch("/users/{user_id}/status")
-async def update_user_status(user_id: str, payload: UserBlockRequest, admin=Depends(SecurityEngine.verify_token)):
+async def update_user_status(user_id: str, payload: UserBlockRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
         blocked_until = None
         if payload.status.upper() == 'BLOCKED' and payload.duration_days:
@@ -174,15 +174,26 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, admin=Depe
 
         supabase.table("cashiers").update(update_data).eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
+
+        # LIVE SYNC: Instantly terminate active cashier session
+        if payload.status.upper() == 'BLOCKED':
+            if hasattr(request.app.state, 'sockets'):
+                await request.app.state.sockets.force_logout_cashier(user_id, payload.reason)
+
         return {"status": "success", "message": f"User status updated to {payload.status.upper()}."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update user status: {str(e)}")
 
 @router.delete("/users/{user_id}")
-async def delete_user_account(user_id: str, admin=Depends(SecurityEngine.verify_token)):
+async def delete_user_account(user_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
         supabase.table("cashiers").delete().eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
+        
+        # LIVE SYNC: Instantly terminate active cashier session on deletion
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.force_logout_cashier(user_id, "Your account has been permanently removed by the Admin.")
+            
         return {"status": "success", "message": "User account permanently deleted."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
@@ -201,7 +212,7 @@ class ExpenseCreate(BaseModel):
     shift: Optional[str] = "Day"
 
 @router.post("/expenses")
-async def create_admin_expense(payload: ExpenseCreate, admin=Depends(SecurityEngine.verify_token)):
+async def create_admin_expense(payload: ExpenseCreate, request: Request, admin=Depends(SecurityEngine.verify_token)):
     admin_id = admin.get("sub")
     if not payload.business_date:
         _, payload.business_date = ShiftEngine.calculate_current_shift()
@@ -223,6 +234,11 @@ async def create_admin_expense(payload: ExpenseCreate, admin=Depends(SecurityEng
             await redis_client.delete(key)
         for key in await redis_client.keys("smartgrill:deep_bi:*"):
             await redis_client.delete(key)
+            
+        # LIVE SYNC: Push updates to Admin Dashboard
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
+            
         return {"status": "success", "message": "Expense recorded successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to record expense: {str(e)}")
@@ -620,7 +636,7 @@ class DeletionAuth(BaseModel):
     token: str
 
 @router.post("/deletion/authorize")
-async def authorize_deletion(payload: DeletionAuth, admin=Depends(SecurityEngine.verify_token)):
+async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depends(SecurityEngine.verify_token)):
     token = payload.token.strip() 
     cache_key = f"code_delete:{token}" if token.isdigit() else f"qr_delete:{token}"
     
@@ -662,6 +678,10 @@ async def authorize_deletion(payload: DeletionAuth, admin=Depends(SecurityEngine
             await redis_client.delete(key)
         for key in await redis_client.keys("smartgrill:*"):
             await redis_client.delete(key)
+            
+        # LIVE SYNC: Push updates to Admin Dashboard after successful deletion
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
             
         return {"status": "success", "message": "Item successfully deleted. The POS has been updated."}
         

@@ -5,15 +5,51 @@ let cart = JSON.parse(localStorage.getItem('sg_cart')) || [];
 let holdQueue = JSON.parse(localStorage.getItem('sg_holds')) || [];
 let deletePollInterval = null;
 let pendingItem = null;
+let cashierWs = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   loadDynamicMenu();
   updateState(); 
+  connectCashierSocket();
   
   // Silently re-fetch the menu every 30 seconds. 
   // This ensures items disabled by the Admin immediately disappear from the Cashier screen.
   setInterval(loadDynamicMenu, 30000);
 });
+
+// ==========================================
+// REAL-TIME SESSION MANAGEMENT
+// ==========================================
+function connectCashierSocket() {
+    const token = localStorage.getItem('sg_token');
+    const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
+    if (!token || !user.id) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/cashier/${user.id}?token=${token}`;
+    
+    cashierWs = new WebSocket(wsUrl);
+    
+    cashierWs.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.action === 'force_logout') {
+            document.getElementById('lockoutReason').innerText = data.reason || "Your access has been revoked by the Executive Admin.";
+            document.getElementById('shiftLockoutOverlay').classList.remove('hidden');
+            document.getElementById('shiftLockoutOverlay').classList.add('flex');
+            
+            // Purge credentials immediately
+            localStorage.removeItem('sg_token');
+            localStorage.removeItem('sg_user');
+            
+            // Redirect after 6 seconds to ensure the cashier reads the message
+            setTimeout(() => { window.location.replace('/index.html'); }, 6000);
+        }
+    };
+    
+    cashierWs.onclose = () => {
+        setTimeout(connectCashierSocket, 5000);
+    };
+}
 
 function getAuthToken() {
   return localStorage.getItem('sg_token') || '';

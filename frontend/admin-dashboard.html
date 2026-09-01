@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Grill | Executive Dashboard</title>
     
+    <!-- BRANDING: SVG Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+    
     <!-- SECURITY GUARD: Instantly kicks out unauthorized users -->
     <script>
         if (!localStorage.getItem('sg_token')) {
@@ -507,6 +510,7 @@
         let fishChart;
         let qrScanner;
         let currentTab = 'sales';
+        let adminWs; // Real-time socket reference
         
         const formatKsh = (n) => `KES ${Number(n).toLocaleString()}`;
 
@@ -526,12 +530,31 @@
             initChart();
             loadAllData();
             
-            setInterval(() => { 
-                if(currentTab === 'sales') {
-                    loadSales(); 
-                }
-            }, 10000);
+            // REAL-TIME SYNC: Replaces setInterval polling
+            connectAdminSocket();
         });
+
+        function connectAdminSocket() {
+            const token = localStorage.getItem('sg_token');
+            if (!token) return;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/admin?token=${token}`;
+            
+            adminWs = new WebSocket(wsUrl);
+            
+            adminWs.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.action === 'refresh_sales') {
+                    if (currentTab === 'sales') loadSales();
+                    if (currentTab === 'analytics') loadDeepBI();
+                }
+            };
+            
+            adminWs.onclose = () => {
+                // Auto-reconnect on disconnect
+                setTimeout(connectAdminSocket, 5000);
+            };
+        }
 
         function toggleTheme() { 
             document.documentElement.classList.toggle('dark'); 
@@ -595,7 +618,6 @@
             document.getElementById('blockDaysDiv').classList.toggle('hidden', val !== 'days');
         }
 
-        // FIXED: Using sg_token to match the login page
         async function apiCall(endpoint, method='GET') {
             const date = document.getElementById('dateFilter').value;
             const res = await fetch(`${BASE_URL}/api/v1/admin${endpoint}${endpoint.includes('?') ? '&' : '?'}business_date=${date}&start_date=${date}&end_date=${date}`, {
@@ -717,7 +739,6 @@
         async function loadExpenses() {
             const month = document.getElementById('expMonthFilter').value;
             const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}`, {
-                // FIXED: Using sg_token
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
             });
             const data = await res.json();
@@ -762,7 +783,6 @@
                 const res = await fetch(`${BASE_URL}/api/v1/admin/expenses`, {
                     method: 'POST',
                     headers: { 
-                        // FIXED: Using sg_token
                         'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 
                         'Content-Type': 'application/json' 
                     },
@@ -794,7 +814,6 @@
 
             const shift = document.getElementById('recShift').value;
             const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}`, {
-                // FIXED: Using sg_token
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
             });
             const data = await res.json();
@@ -819,7 +838,6 @@
 
         async function loadUsers() {
             const res = await fetch(`${BASE_URL}/api/v1/admin/users`, {
-                // FIXED: Using sg_token
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
             });
             const users = await res.json();
@@ -862,7 +880,6 @@
         async function updateUserStatus(userId, status, days=null, reason=null) {
             await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
                 method: 'PATCH',
-                // FIXED: Using sg_token
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: status, duration_days: days, reason: reason })
             });
@@ -872,7 +889,6 @@
         async function deleteUser(userId) {
             if(!confirm("Permanently delete this user account?")) return;
             await fetch(`${BASE_URL}/api/v1/admin/users/${userId}`, {
-                // FIXED: Using sg_token
                 method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
             });
             loadUsers();
@@ -912,7 +928,6 @@
             
             await fetch(url, { 
                 method: 'POST', 
-                // FIXED: Using sg_token
                 headers: {'Authorization': `Bearer ${localStorage.getItem('sg_token')}`} 
             });
             
@@ -924,7 +939,6 @@
         async function toggleMenu(id, state) {
             await fetch(`${BASE_URL}/api/v1/admin/menu/${id}/toggle?is_active=${state}`, { 
                 method: 'PATCH', 
-                // FIXED: Using sg_token
                 headers: {'Authorization': `Bearer ${localStorage.getItem('sg_token')}`} 
             });
             loadMenu();
@@ -940,7 +954,6 @@
             try {
                 const res = await fetch(`${BASE_URL}/api/v1/admin/menu/${id}`, { 
                     method: 'DELETE', 
-                    // FIXED: Using sg_token
                     headers: {'Authorization': `Bearer ${localStorage.getItem('sg_token')}`} 
                 });
                 
@@ -965,7 +978,6 @@
             const res = await fetch(`${BASE_URL}/api/v1/admin/deletion/authorize`, {
                 method: 'POST', 
                 headers: { 
-                    // FIXED: Using sg_token
                     'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
                     'Content-Type': 'application/json' 
                 },
@@ -1002,7 +1014,6 @@
                 const res = await fetch(`${BASE_URL}/api/v1/admin/deletion/authorize`, {
                     method: 'POST', 
                     headers: { 
-                        // FIXED: Using sg_token
                         'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
                         'Content-Type': 'application/json'
                     },
@@ -1022,7 +1033,6 @@
             document.getElementById('profileModal').classList.remove('hidden');
             
             const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, { 
-                // FIXED: Using sg_token
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` } 
             });
             
@@ -1049,7 +1059,6 @@
             const res = await fetch(`${BASE_URL}/api/v1/admin/profile`, {
                 method: 'PUT',
                 headers: { 
-                    // FIXED: Using sg_token
                     'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 
                     'Content-Type': 'application/json' 
                 },
@@ -1085,7 +1094,6 @@
             try {
                 const res = await fetch(url, {
                     method: 'POST',
-                    // FIXED: Using sg_token
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
 
@@ -1138,7 +1146,6 @@
         }
 
         function logout() { 
-            // FIXED: Using sg_token
             localStorage.removeItem('sg_token'); 
             window.location.href = '/index.html'; 
         }

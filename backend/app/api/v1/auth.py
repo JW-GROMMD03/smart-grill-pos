@@ -1,9 +1,10 @@
 import smtplib
 import random
 import json
+from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 from fastapi import APIRouter, HTTPException, Request, Header
-# Ensure CashierLoginSchema is imported here
+
 from app.schemas.auth import LoginSchema, UserResponse, OTPVerifySchema, VaultResetSchema, CashierLoginSchema
 from app.core.supabase import supabase
 from app.core.security import SecurityEngine
@@ -100,10 +101,9 @@ async def master_reset(payload: VaultResetSchema, x_master_key: str = Header(Non
         
         await redis_client.setex(lockout_key, 2592000, "locked")
         return {"status": "success", "message": "Admin clearance updated. Vault sealed for 30 days."}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Database mutation failed.")
 
-# --- NEW CASHIER ROUTE ---
 @router.post("/cashier-login")
 async def cashier_login(credentials: CashierLoginSchema, request: Request):
     client_identifier = f"{request.client.host}:{credentials.username}"
@@ -116,8 +116,22 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         
         cashier = res.data[0]
         
-        if cashier.get("status") == "SUSPENDED":
-            raise HTTPException(status_code=403, detail="Account suspended. Contact Admin.")
+        # 1. STRICT ACCESS CONTROL: Check Blocked Status
+        if cashier.get("status") == "BLOCKED":
+            reason = cashier.get("block_reason", "Account suspended. Contact Admin.")
+            raise HTTPException(status_code=403, detail=f"ACCESS DENIED: {reason}")
+
+        # 2. STRICT ACCESS CONTROL: Validate Current Shift (Mombasa Time EAT is UTC+3)
+        eat_time = datetime.now(timezone.utc) + timedelta(hours=3)
+        current_hour = eat_time.hour
+        # Day Shift: 06:00 to 17:59 | Night Shift: 18:00 to 05:59
+        active_server_shift = "Day" if 6 <= current_hour < 18 else "Night"
+        
+        if cashier.get("assigned_shift") != active_server_shift:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"SHIFT LOCKOUT: You are assigned to the '{cashier.get('assigned_shift')}' shift. The current server shift is '{active_server_shift}'."
+            )
 
         if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
             raise ValueError("Invalid credentials")
@@ -141,5 +155,7 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
     except ValueError:
         await SecurityEngine.record_failed_attempt(client_identifier)
         raise HTTPException(status_code=401, detail="Invalid username or PIN.")
-    except Exception as e:
+    except HTTPException as he:
+        raise he
+    except Exception:
         raise HTTPException(status_code=500, detail="Database connection error.")
