@@ -68,7 +68,20 @@ app = FastAPI(
     redoc_url=None
 )
 
+# Parse existing settings if any
 origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+# ADDED: Explicitly inject your new custom domains and local testing URLs
+origins.extend([
+    "https://smartgrillpos.com",
+    "https://www.smartgrillpos.com",
+    "https://smart-grill-backend.onrender.com",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+])
+
+# Remove any duplicates
+origins = list(set(origins))
 
 app.add_middleware(
     CORSMiddleware,
