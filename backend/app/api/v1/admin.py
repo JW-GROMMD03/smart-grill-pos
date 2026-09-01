@@ -2,6 +2,7 @@ import json
 import random
 import string
 import uuid
+import calendar
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -360,7 +361,9 @@ async def get_filtered_expenses(
         if date:
             query = query.eq("business_date", date)
         elif month:
-            query = query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-31")
+            y, m = map(int, month.split("-"))
+            last_day = calendar.monthrange(y, m)[1]
+            query = query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-{last_day:02d}")
         
         if shift and shift != "All":
             query = query.eq("shift", shift)
@@ -416,8 +419,10 @@ async def get_comprehensive_records(
             sales_query = sales_query.eq("business_date", date)
             exp_query = exp_query.eq("business_date", date)
         elif month:
-            sales_query = sales_query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-31")
-            exp_query = exp_query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-31")
+            y, m = map(int, month.split("-"))
+            last_day = calendar.monthrange(y, m)[1]
+            sales_query = sales_query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-{last_day:02d}")
+            exp_query = exp_query.gte("business_date", f"{month}-01").lte("business_date", f"{month}-{last_day:02d}")
         elif year:
             sales_query = sales_query.gte("business_date", f"{year}-01-01").lte("business_date", f"{year}-12-31")
             exp_query = exp_query.gte("business_date", f"{year}-01-01").lte("business_date", f"{year}-12-31")
