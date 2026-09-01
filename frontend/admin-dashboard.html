@@ -1,3 +1,4 @@
+<!-- frontend/admin-dashboard.html -->
 <!DOCTYPE html>
 <html lang="en" class="light">
 <head>
@@ -8,10 +9,29 @@
     <!-- BRANDING: SVG Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
     
-    <!-- SECURITY GUARD: Instantly kicks out unauthorized users -->
+    <!-- SECURITY GUARD: Instantly kicks out unauthorized users and cashiers -->
     <script>
-        if (!localStorage.getItem('sg_token')) {
+        const token = localStorage.getItem('sg_token');
+        if (!token) {
             window.location.replace('/index.html');
+        } else {
+            try {
+                // Safely decode JWT payload
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const payload = JSON.parse(jsonPayload);
+                
+                // If the user is a cashier, redirect them immediately to prevent API crashes
+                if (payload.role !== 'admin') {
+                    window.location.replace('/index.html');
+                }
+            } catch(e) {
+                localStorage.removeItem('sg_token');
+                window.location.replace('/index.html');
+            }
         }
     </script>
 
@@ -655,14 +675,27 @@
 
         async function apiCall(endpoint, method='GET') {
             const date = document.getElementById('dateFilter').value;
-            const res = await fetch(`${BASE_URL}/api/v1/admin${endpoint}${endpoint.includes('?') ? '&' : '?'}business_date=${date}&start_date=${date}&end_date=${date}`, {
-                method: method, 
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
-            });
-            if(res.status === 401) {
-                logout();
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin${endpoint}${endpoint.includes('?') ? '&' : '?'}business_date=${date}&start_date=${date}&end_date=${date}`, {
+                    method: method, 
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                
+                // Add explicit error handling to prevent API crashes when unauthorized
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                    return null;
+                }
+                
+                if (!res.ok) {
+                    return null;
+                }
+                
+                return await res.json();
+            } catch (err) {
+                console.error("API Call Error:", err);
+                return null;
             }
-            return await res.json();
         }
 
         function loadAllData() {
@@ -741,45 +774,49 @@
 
         async function loadSales() {
             const data = await apiCall('/sales/live');
+            if (!data) return; // Prevent TypeError if API fails
             
-            document.getElementById('cashAtHand').innerText = formatKsh(data.cash_at_hand);
-            document.getElementById('cashSales').innerText = formatKsh(data.cash_sales);
-            document.getElementById('mpesaSales').innerText = formatKsh(data.mpesa_sales);
+            document.getElementById('cashAtHand').innerText = formatKsh(data.cash_at_hand || 0);
+            document.getElementById('cashSales').innerText = formatKsh(data.cash_sales || 0);
+            document.getElementById('mpesaSales').innerText = formatKsh(data.mpesa_sales || 0);
             
-            document.getElementById('salesTableBody').innerHTML = data.recent_transactions.map(t => {
-                const time = new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const cashier = t.cashiers 
-                    ? `<span class="font-bold">${t.cashiers.full_name}</span> <span class="text-xs text-slate-400">(${t.cashiers.assigned_shift})</span>` 
-                    : 'Unknown';
-                
-                let methodBadge = '';
-                const pm = (t.payment_method || '').toUpperCase();
-                
-                if (pm === 'CASH') {
-                    methodBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">CASH</span>';
-                } else if (pm === 'PARTIAL') {
-                    methodBadge = '<span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">PARTIAL</span>';
-                } else {
-                    methodBadge = '<span class="px-2 py-1 rounded bg-brand-primary/10 text-brand-primary text-xs font-bold">M-PESA</span>';
-                }
-                
-                return `
-                <tr>
-                    <td class="font-medium text-slate-500">${time}</td>
-                    <td>${cashier}</td>
-                    <td class="text-xs truncate max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
-                    <td>${methodBadge}</td>
-                    <td class="text-right font-bold text-emerald-500">${formatKsh(t.total_amount)}</td>
-                </tr>`;
-            }).join('');
+            if (data.recent_transactions) {
+                document.getElementById('salesTableBody').innerHTML = data.recent_transactions.map(t => {
+                    const time = new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const cashier = t.cashiers 
+                        ? `<span class="font-bold">${t.cashiers.full_name}</span> <span class="text-xs text-slate-400">(${t.cashiers.assigned_shift})</span>` 
+                        : 'Unknown';
+                    
+                    let methodBadge = '';
+                    const pm = (t.payment_method || '').toUpperCase();
+                    
+                    if (pm === 'CASH') {
+                        methodBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">CASH</span>';
+                    } else if (pm === 'PARTIAL') {
+                        methodBadge = '<span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">PARTIAL</span>';
+                    } else {
+                        methodBadge = '<span class="px-2 py-1 rounded bg-brand-primary/10 text-brand-primary text-xs font-bold">M-PESA</span>';
+                    }
+                    
+                    return `
+                    <tr>
+                        <td class="font-medium text-slate-500">${time}</td>
+                        <td>${cashier}</td>
+                        <td class="text-xs truncate max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
+                        <td>${methodBadge}</td>
+                        <td class="text-right font-bold text-emerald-500">${formatKsh(t.total_amount)}</td>
+                    </tr>`;
+                }).join('');
+            }
         }
 
         async function loadDeepBI() {
             const data = await apiCall('/analytics/deep');
+            if (!data) return; // Prevent TypeError
             
             const meats = ['beef', 'mbuzi', 'chicken'];
             meats.forEach(m => {
-                if(data.meat[m]) {
+                if(data.meat && data.meat[m]) {
                     const d = data.meat[m];
                     document.getElementById(`${m}14`).innerText = d['1/4'];
                     document.getElementById(`${m}12`).innerText = d['1/2'];
@@ -790,69 +827,107 @@
                 }
             });
 
-            const fPrices = Object.keys(data.fish.prices).map(p => `KES ${p}`);
-            const fAmounts = Object.values(data.fish.prices).map(v => v.amount);
-            
-            fishChart.data.labels = fPrices;
-            fishChart.data.datasets[0].data = fAmounts;
-            fishChart.update();
-            
-            document.getElementById('fishTotalRev').innerText = formatKsh(data.fish.total_revenue);
-            document.getElementById('fishCash').innerText = formatKsh(data.fish.cash);
-            document.getElementById('fishMpesa').innerText = formatKsh(data.fish.mpesa);
+            if (data.fish && data.fish.prices) {
+                const fPrices = Object.keys(data.fish.prices).map(p => `KES ${p}`);
+                const fAmounts = Object.values(data.fish.prices).map(v => v.amount);
+                
+                fishChart.data.labels = fPrices;
+                fishChart.data.datasets[0].data = fAmounts;
+                fishChart.update();
+                
+                document.getElementById('fishTotalRev').innerText = formatKsh(data.fish.total_revenue);
+                document.getElementById('fishCash').innerText = formatKsh(data.fish.cash);
+                document.getElementById('fishMpesa').innerText = formatKsh(data.fish.mpesa);
+            }
 
-            document.getElementById('greensTableBody').innerHTML = Object.entries(data.greens).map(([name, d]) => `
-                <tr>
-                    <td class="capitalize font-medium text-brand-primary">${name}</td>
-                    <td class="text-right">${d.qty}</td>
-                    <td class="text-right text-emerald-500 font-bold">${formatKsh(d.revenue)}</td>
-                </tr>
-            `).join('');
+            if (data.greens) {
+                document.getElementById('greensTableBody').innerHTML = Object.entries(data.greens).map(([name, d]) => `
+                    <tr>
+                        <td class="capitalize font-medium text-brand-primary">${name}</td>
+                        <td class="text-right">${d.qty}</td>
+                        <td class="text-right text-emerald-500 font-bold">${formatKsh(d.revenue)}</td>
+                    </tr>
+                `).join('');
+            }
 
-            const s = data.sides;
-            const sidesArr = [
-                {name: 'Chips (Regular)', d: s.chips_regular}, 
-                {name: 'Chips (Masala)', d: s.chips_masala},
-                {name: 'Kachumbari', d: s.kachumbari}, 
-                {name: 'Wet Fry', d: s.wet_fry}
-            ];
-            
-            document.getElementById('sidesTableBody').innerHTML = sidesArr.map(item => `
-                <tr>
-                    <td class="font-medium text-amber-500">${item.name}</td>
-                    <td class="text-right">${item.d.qty}</td>
-                    <td class="text-right text-emerald-500 font-bold">${formatKsh(item.d.revenue)}</td>
-                </tr>
-            `).join('');
+            if (data.sides) {
+                const s = data.sides;
+                const sidesArr = [
+                    {name: 'Chips (Regular)', d: s.chips_regular}, 
+                    {name: 'Chips (Masala)', d: s.chips_masala},
+                    {name: 'Kachumbari', d: s.kachumbari}, 
+                    {name: 'Wet Fry', d: s.wet_fry}
+                ].filter(item => item.d);
+                
+                document.getElementById('sidesTableBody').innerHTML = sidesArr.map(item => `
+                    <tr>
+                        <td class="font-medium text-amber-500">${item.name}</td>
+                        <td class="text-right">${item.d.qty}</td>
+                        <td class="text-right text-emerald-500 font-bold">${formatKsh(item.d.revenue)}</td>
+                    </tr>
+                `).join('');
+            }
 
-            const dr = data.drinks;
-            document.getElementById('cokeQty').innerText = dr.coke.qty; 
-            document.getElementById('cokeRev').innerText = formatKsh(dr.coke.rev);
-            
-            document.getElementById('pepsiQty').innerText = dr.pepsi.qty; 
-            document.getElementById('pepsiRev').innerText = formatKsh(dr.pepsi.rev);
-            
-            document.getElementById('waterQty').innerText = dr.water.qty; 
-            document.getElementById('waterRev').innerText = formatKsh(dr.water.rev);
+            if (data.drinks) {
+                const dr = data.drinks;
+                if(dr.coke) {
+                    document.getElementById('cokeQty').innerText = dr.coke.qty; 
+                    document.getElementById('cokeRev').innerText = formatKsh(dr.coke.rev);
+                }
+                if(dr.pepsi) {
+                    document.getElementById('pepsiQty').innerText = dr.pepsi.qty; 
+                    document.getElementById('pepsiRev').innerText = formatKsh(dr.pepsi.rev);
+                }
+                if(dr.water) {
+                    document.getElementById('waterQty').innerText = dr.water.qty; 
+                    document.getElementById('waterRev').innerText = formatKsh(dr.water.rev);
+                }
+            }
         }
 
         async function loadExpenses() {
             const month = document.getElementById('expMonthFilter').value;
-            const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
-            });
-            const data = await res.json();
-            document.getElementById('statTotalExp').innerText = formatKsh(data.total_expenses);
-            document.getElementById('statCashExp').innerText = formatKsh(data.cash_expenses);
-            document.getElementById('statHighestDay').innerText = data.highest_expense_day || 'None';
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                
+                // CRITICAL FIX: Safe error handling so the frontend doesn't crash on 403
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) logout();
+                    console.error("Failed to fetch expenses");
+                    document.getElementById('statTotalExp').innerText = 'KES 0';
+                    document.getElementById('statCashExp').innerText = 'KES 0';
+                    document.getElementById('statHighestDay').innerText = '-';
+                    document.getElementById('cashierExpenseBreakdown').innerHTML = '<p class="text-slate-400 italic">Error loading expenses.</p>';
+                    return;
+                }
+                
+                const data = await res.json();
+                
+                if (!data) return;
 
-            const cashierDiv = document.getElementById('cashierExpenseBreakdown');
-            cashierDiv.innerHTML = Object.entries(data.cashier_breakdown).map(([name, amt]) => `
-                <div class="flex justify-between p-3 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
-                    <span class="font-semibold">${name}</span>
-                    <span class="font-bold text-rose-500">${formatKsh(amt)}</span>
-                </div>
-            `).join('') || '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+                document.getElementById('statTotalExp').innerText = formatKsh(data.total_expenses || 0);
+                document.getElementById('statCashExp').innerText = formatKsh(data.cash_expenses || 0);
+                document.getElementById('statHighestDay').innerText = data.highest_expense_day || 'None';
+
+                const cashierDiv = document.getElementById('cashierExpenseBreakdown');
+                
+                // CRITICAL FIX: Ensure cashier_breakdown exists before calling Object.entries
+                if (data.cashier_breakdown && typeof data.cashier_breakdown === 'object') {
+                    cashierDiv.innerHTML = Object.entries(data.cashier_breakdown).map(([name, amt]) => `
+                        <div class="flex justify-between p-3 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
+                            <span class="font-semibold">${name}</span>
+                            <span class="font-bold text-rose-500">${formatKsh(amt)}</span>
+                        </div>
+                    `).join('') || '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+                } else {
+                    cashierDiv.innerHTML = '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('cashierExpenseBreakdown').innerHTML = '<p class="text-slate-400 italic">Error loading expenses.</p>';
+            }
         }
 
         async function submitExpense() {
@@ -913,49 +988,67 @@
             else if (type === 'year') queryParam = `year=${document.getElementById('recYearInput').value}`;
 
             const shift = document.getElementById('recShift').value;
-            const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
-            });
-            const data = await res.json();
-            document.getElementById('recTotalSales').innerText = formatKsh(data.summary.total_sales);
-            document.getElementById('recTotalExp').innerText = formatKsh(data.summary.total_expenses);
-            document.getElementById('recNetProfit').innerText = formatKsh(data.summary.net_profit);
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) logout();
+                    return;
+                }
+                
+                const data = await res.json();
+                if (!data || !data.summary) return;
 
-            const combined = [
-                ...(data.sales || []).map(s => ({ ...s, record_type: 'SALE', display_name: `Sale (${s.payment_method})`, amount: s.total_amount })),
-                ...(data.expenses || []).map(e => ({ ...e, record_type: 'EXPENSE', display_name: `Expense: ${e.description}`, amount: -e.amount }))
-            ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+                document.getElementById('recTotalSales').innerText = formatKsh(data.summary.total_sales || 0);
+                document.getElementById('recTotalExp').innerText = formatKsh(data.summary.total_expenses || 0);
+                document.getElementById('recNetProfit').innerText = formatKsh(data.summary.net_profit || 0);
 
-            document.getElementById('comprehensiveTableBody').innerHTML = combined.map(item => `
-                <tr>
-                    <td>${item.business_date} (${item.shift || 'Day'})</td>
-                    <td class="font-medium">${item.display_name}</td>
-                    <td><span class="px-2 py-0.5 rounded text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
-                    <td class="text-right font-bold ${item.record_type === 'SALE' ? 'text-emerald-500' : 'text-rose-500'}">${formatKsh(item.amount)}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found for this filter.</td></tr>';
+                const combined = [
+                    ...(data.sales || []).map(s => ({ ...s, record_type: 'SALE', display_name: `Sale (${s.payment_method})`, amount: s.total_amount })),
+                    ...(data.expenses || []).map(e => ({ ...e, record_type: 'EXPENSE', display_name: `Expense: ${e.description}`, amount: -e.amount }))
+                ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+                document.getElementById('comprehensiveTableBody').innerHTML = combined.map(item => `
+                    <tr>
+                        <td>${item.business_date} (${item.shift || 'Day'})</td>
+                        <td class="font-medium">${item.display_name}</td>
+                        <td><span class="px-2 py-0.5 rounded text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
+                        <td class="text-right font-bold ${item.record_type === 'SALE' ? 'text-emerald-500' : 'text-rose-500'}">${formatKsh(item.amount)}</td>
+                    </tr>
+                `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found for this filter.</td></tr>';
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         async function loadUsers() {
-            const res = await fetch(`${BASE_URL}/api/v1/admin/users`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
-            });
-            const users = await res.json();
-            document.getElementById('userListArea').innerHTML = users.map(u => `
-                <div class="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
-                    <div>
-                        <h4 class="font-bold">${u.full_name} (${u.username})</h4>
-                        <p class="text-xs text-slate-400">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
-                    </div>
-                    <div class="flex space-x-2">
-                        ${u.status === 'ACTIVE' ? 
-                            `<button onclick="openBlockModal('${u.id}')" class="bg-amber-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
-                            `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
-                        }
-                        <button onclick="deleteUser('${u.id}')" class="bg-rose-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-600 transition">Delete</button>
-                    </div>
-                </div>
-            `).join('') || '<p class="text-slate-400 italic">No cashiers registered.</p>';
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                if (!res.ok) return;
+                const users = await res.json();
+                
+                if (Array.isArray(users)) {
+                    document.getElementById('userListArea').innerHTML = users.map(u => `
+                        <div class="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                            <div>
+                                <h4 class="font-bold">${u.full_name} (${u.username})</h4>
+                                <p class="text-xs text-slate-400">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
+                            </div>
+                            <div class="flex space-x-2">
+                                ${u.status === 'ACTIVE' ? 
+                                    `<button onclick="openBlockModal('${u.id}')" class="bg-amber-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
+                                    `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
+                                }
+                                <button onclick="deleteUser('${u.id}')" class="bg-rose-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-600 transition">Delete</button>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="text-slate-400 italic">No cashiers registered.</p>';
+                }
+            } catch (err) {}
         }
 
         function openBlockModal(userId) {
@@ -996,6 +1089,8 @@
 
         async function loadMenu() {
             const items = await apiCall('/menu');
+            if (!items || !Array.isArray(items)) return;
+            
             document.getElementById('menuTableBody').innerHTML = items.map(i => {
                 const statusBadge = i.is_active 
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
@@ -1247,7 +1342,7 @@
 
         function logout() { 
             localStorage.removeItem('sg_token'); 
-            window.location.href = '/login.html'; 
+            window.location.href = '/index.html'; 
         }
     </script>
 </body>
