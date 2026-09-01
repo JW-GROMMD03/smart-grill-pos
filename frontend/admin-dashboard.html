@@ -1271,7 +1271,7 @@
             if(res.ok) {
                 const data = await res.json();
                 document.getElementById('profName').value = data.full_name || '';
-                document.getElementById('profEmail').value = data.username || 'admin@smartgrill.co.ke';
+                document.getElementById('profEmail').value = data.username || settings.SMTP_EMAIL;
                 document.getElementById('profPass').value = '';
             }
         }

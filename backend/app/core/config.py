@@ -13,10 +13,11 @@ class Settings(BaseSettings):
     ADMIN_SECRET_KEY: str = os.getenv("ADMIN_SECRET_KEY", "ADMIN_KEY")
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "*")
     
-    # New: SMTP & Vault Config
+    # SMTP & Vault Config
     SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", 465))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_EMAIL: str = os.getenv("SMTP_EMAIL", os.getenv("SMTP_USERNAME", ""))
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     MASTER_KEY: str = os.getenv("MASTER_KEY", "fallback-dev-key")
 

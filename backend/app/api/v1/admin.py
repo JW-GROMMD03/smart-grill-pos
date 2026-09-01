@@ -150,7 +150,7 @@ async def get_admin_profile(admin=Depends(SecurityEngine.verify_token)):
         
     try:
         res = supabase.table("cashiers").select("id, full_name, username").eq("id", admin_id).execute()
-        profile_data = res.data[0] if res.data else {"full_name": admin.get("username", "Admin"), "username": "admin@smartgrill.co.ke"}
+        profile_data = res.data[0] if res.data else {"full_name": admin.get("username", "Admin"), "username": settings.SMTP_EMAIL}
         
         await redis_client.setex(cache_key, 3600, json.dumps(profile_data))
         return profile_data
@@ -216,13 +216,13 @@ async def terminal_initiate_reset(payload: VaultResetInit, request: Request):
     msg = EmailMessage()
     msg.set_content(f"Level 4 Vault Reset requested from Terminal.\n\nAccess your secure portal to answer validation questions:\n{reset_link}\n\nLink expires in 15 minutes.")
     msg['Subject'] = "CRITICAL: Admin Vault Password Reset Request"
-    msg['From'] = "smartgrill2026@gmail.com"
+    msg['From'] = settings.SMTP_EMAIL
     msg['To'] = payload.admin_email
 
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
             server.starttls()
-            server.login("smartgrill2026@gmail.com", "YOUR_EMAIL_OR_APP_PASSWORD")
+            server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
             server.send_message(msg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to dispatch email: {str(e)}")
