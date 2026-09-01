@@ -258,16 +258,19 @@ async def delete_menu_item(item_id: str, admin=Depends(SecurityEngine.verify_tok
 @router.get("/users")
 async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
     try:
-        # Filter out DELETED users so they disappear from the admin dashboard
-        res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").neq("status", "DELETED").execute()
-        return res.data or []
+        # Fetch all users first to avoid PostgreSQL NULL comparison crashes
+        res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").execute()
+        users = res.data or []
+        
+        # Filter out DELETED users safely in Python
+        active_users = [
+            u for u in users 
+            if str(u.get("status") or "").strip().upper() != "DELETED"
+        ]
+        
+        return active_users
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
-
-class UserBlockRequest(BaseModel):
-    status: str 
-    duration_days: Optional[int] = None 
-    reason: Optional[str] = "Please contact manager for clarification."
 
 @router.patch("/users/{user_id}/status")
 async def update_user_status(user_id: str, payload: UserBlockRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
