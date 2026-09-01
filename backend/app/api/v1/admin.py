@@ -71,14 +71,12 @@ async def manage_shift_permit(payload: ShiftPermitRequest, request: Request, adm
         }
         await redis_client.set("system:shift_permit", json.dumps(permit_data))
         
-        # If Early Start for DAY shift, force-lock the night shift out immediately
         if payload.permit_type.upper() == "EARLY_START" and payload.permitted_shift.upper() == "DAY":
             tz = timezone(timedelta(hours=3))
             now_dt = datetime.now(tz)
             curr_id = f"{now_dt.date()}-DAY"
             await redis_client.set("system:active_shift", curr_id)
 
-        # Notify cashiers and admins via WebSocket
         if hasattr(request.app.state, 'sockets'):
             await request.app.state.sockets.broadcast_admin({"action": "shift_update", "permit": permit_data})
 
@@ -178,6 +176,18 @@ async def update_admin_profile(data: ProfileUpdate, admin=Depends(SecurityEngine
 # MENU MANAGEMENT
 # ==========================================
 
+class MenuItemCreate(BaseModel):
+    name: str
+    category: str
+    price: float
+    sub_category: Optional[str] = None
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    price: Optional[float] = None
+    sub_category: Optional[str] = None
+
 @router.get("/menu")
 async def get_menu(admin=Depends(SecurityEngine.verify_token)):
     try:
@@ -199,37 +209,52 @@ async def get_menu(admin=Depends(SecurityEngine.verify_token)):
 
 @router.post("/menu")
 async def add_menu_item(
-    name: str, 
-    category: str, 
-    price: float, 
-    sub_category: Optional[str] = None,
+    payload: MenuItemCreate,
     admin=Depends(SecurityEngine.verify_token)
 ):
     item_id = str(uuid.uuid4())
-    payload = {
+    db_payload = {
         "id": item_id, 
-        "name": name, 
-        "category": category, 
-        "price": price, 
+        "name": payload.name, 
+        "category": payload.category, 
+        "price": payload.price, 
         "is_active": True
     }
-    if category.lower() == "meat cuts" and sub_category:
-        payload["sub_category"] = sub_category.lower()
+    if payload.category.lower() == "meat cuts" and payload.sub_category:
+        db_payload["sub_category"] = payload.sub_category.lower()
 
     try:
-        supabase.table("menu_items").insert(payload).execute()
+        supabase.table("menu_items").insert(db_payload).execute()
         await redis_client.delete("cache:menu_v4") 
-        await SecurityEngine.log_event("MENU", admin.get("sub"), admin.get("username"), f"Added {name} ({category})")
+        await SecurityEngine.log_event("MENU", admin.get("sub"), admin.get("username"), f"Added {payload.name} ({payload.category})")
         return {"status": "success", "message": "Item added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add item: {str(e)}")
 
 @router.put("/menu/{item_id}")
-async def update_menu_item(item_id: str, price: float, admin=Depends(SecurityEngine.verify_token)):
+async def update_menu_item(
+    item_id: str, 
+    payload: MenuItemUpdate, 
+    admin=Depends(SecurityEngine.verify_token)
+):
+    """Enhanced feature: Updates menu item properties (price, name, category, or sub_category) dynamically."""
+    update_data = {}
+    if payload.name is not None:
+        update_data["name"] = payload.name
+    if payload.category is not None:
+        update_data["category"] = payload.category
+    if payload.price is not None:
+        update_data["price"] = payload.price
+    if payload.sub_category is not None:
+        update_data["sub_category"] = payload.sub_category.lower()
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid update fields provided.")
+
     try:
-        supabase.table("menu_items").update({"price": price}).eq("id", item_id).execute()
+        supabase.table("menu_items").update(update_data).eq("id", item_id).execute()
         await redis_client.delete("cache:menu_v4")
-        return {"status": "success"}
+        return {"status": "success", "message": "Menu item updated successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update item: {str(e)}")
 
@@ -263,11 +288,9 @@ class UserBlockRequest(BaseModel):
 @router.get("/users")
 async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
     try:
-        # Fetch all users first to avoid PostgreSQL NULL comparison crashes
         res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").execute()
         users = res.data or []
         
-        # Filter out DELETED users safely in Python
         active_users = [
             u for u in users 
             if str(u.get("status") or "").strip().upper() != "DELETED"
@@ -282,14 +305,13 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
     try:
         blocked_until = None
         
-        # Safely convert duration to an integer, ignoring empty strings from the frontend
         if payload.status.upper() == 'BLOCKED' and payload.duration_days:
             try:
                 days = int(payload.duration_days)
                 if days > 0:
                     blocked_until = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
             except (ValueError, TypeError):
-                pass # Ignore invalid strings like "" or "none"
+                pass 
         
         update_data = {
             "status": payload.status.upper(),
@@ -311,7 +333,6 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
 @router.delete("/users/{user_id}")
 async def delete_user_account(user_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
-        # Implementing a SOFT DELETE to avoid breaking PostgreSQL Foreign Key constraints on past sales
         supabase.table("cashiers").update({"status": "DELETED"}).eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
         
@@ -374,7 +395,6 @@ async def get_filtered_expenses(
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
-        # FIX 1: Remove the broken "cashiers(full_name)" join from the select query
         query = supabase.table("expenses").select("*")
         
         if date:
@@ -390,7 +410,6 @@ async def get_filtered_expenses(
         res = query.order("created_at", desc=True).execute()
         expenses = res.data or []
 
-        # FIX 2: Fetch cashier names manually to replace the broken DB join
         cashier_ids = list(set(e.get("recorded_by") for e in expenses if e.get("recorded_by")))
         cashier_map = {}
         if cashier_ids:
@@ -403,9 +422,8 @@ async def get_filtered_expenses(
 
         cashier_breakdown = {}
         for e in expenses:
-            # FIX 3: Assign the name safely, defaulting to Admin if not in the cashiers table
             c_name = cashier_map.get(e.get("recorded_by"), "Admin / System")
-            e["cashiers"] = {"full_name": c_name} # Inject for frontend compatibility
+            e["cashiers"] = {"full_name": c_name}
             cashier_breakdown[c_name] = cashier_breakdown.get(c_name, 0) + float(e.get("amount", 0))
 
         daily_totals = {}
@@ -440,7 +458,6 @@ async def get_comprehensive_records(
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
-        # Keep the sales join (it still works), but remove the broken expenses join
         sales_query = supabase.table("sales").select("*, cashiers(full_name, assigned_shift)")
         exp_query = supabase.table("expenses").select("*") 
 
@@ -462,7 +479,6 @@ async def get_comprehensive_records(
         sales = sales_res.data or []
         expenses = exp_res.data or []
 
-        # Manually map cashier names for expenses to prevent frontend crashes
         exp_cashier_ids = list(set(e.get("recorded_by") for e in expenses if e.get("recorded_by")))
         exp_cashier_map = {}
         if exp_cashier_ids:
