@@ -8,12 +8,15 @@ from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from itsdangerous import URLSafeTimedSerializer
 from app.core.redis import redis_client
 from app.core.security import SecurityEngine
 from app.core.supabase import supabase
 from app.core.shift_engine import ShiftEngine
+from app.core.config import settings
 
 router = APIRouter()
+serializer = URLSafeTimedSerializer(settings.JWT_SECRET)
 
 # ==========================================
 # SHIFT OVERLAP & PERMIT CONTROL
@@ -178,6 +181,79 @@ async def update_admin_profile(data: ProfileUpdate, admin=Depends(SecurityEngine
             raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
             
     return {"status": "success", "message": "Profile updated successfully."}
+
+# ==========================================
+# MASTER VAULT SECURE RESET PIPELINE
+# ==========================================
+
+class VaultResetInit(BaseModel):
+    admin_email: str
+
+class VerifyQuestionsRequest(BaseModel):
+    token: str
+    a1: str
+    a2: str
+    a3: str
+
+class FinalResetRequest(BaseModel):
+    token: str
+    new_password: str
+
+@router.post("/vault/initiate-reset")
+async def terminal_initiate_reset(payload: VaultResetInit, request: Request):
+    """Triggered exclusively via terminal CLI script with master key authentication."""
+    master_header = request.headers.get("x-master-key")
+    master_secret = getattr(settings, "MASTER_SECRET_KEY", "smart-grill-super-master-key")
+    if master_header != master_secret:
+        raise HTTPException(status_code=403, detail="Unauthorized terminal command.")
+
+    token = serializer.dumps(payload.admin_email, salt="vault-reset-salt")
+    reset_link = f"https://smartgrillpos.com/master-vault.html?token={token}"
+
+    return {
+        "status": "success", 
+        "message": "Encrypted reset token generated successfully.", 
+        "secure_token": token,
+        "reset_link": reset_link
+    }
+
+@router.post("/vault/verify-questions")
+async def verify_security_questions(payload: VerifyQuestionsRequest):
+    try:
+        email = serializer.loads(payload.token, salt="vault-reset-salt", max_age=900)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Token expired or invalid.")
+
+    res = supabase.table("cashiers").select("*").eq("username", email).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Admin identity not found.")
+    
+    admin_record = res.data[0]
+
+    match_1 = SecurityEngine.verify_password(payload.a1.strip().lower(), admin_record.get("sec_a1_hash", ""))
+    match_2 = SecurityEngine.verify_password(payload.a2.strip().lower(), admin_record.get("sec_a2_hash", ""))
+    match_3 = SecurityEngine.verify_password(payload.a3.strip().lower(), admin_record.get("sec_a3_hash", ""))
+
+    if not (match_1 and match_2 and match_3):
+        raise HTTPException(status_code=401, detail="Incorrect security answers.")
+
+    auth_token = serializer.dumps(email, salt="vault-authorized-salt")
+    return {"status": "success", "auth_token": auth_token}
+
+@router.post("/vault/execute-reset")
+async def execute_vault_reset(payload: FinalResetRequest):
+    try:
+        email = serializer.loads(payload.token, salt="vault-authorized-salt", max_age=300)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Authorization session expired.")
+
+    new_hash = SecurityEngine.hash_password(payload.new_password)
+    res = supabase.table("cashiers").update({"pin_hash": new_hash}).eq("username", email).execute()
+    
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Password rotation failed or user not found.")
+
+    return {"status": "success", "message": "Admin password successfully rotated through secure vault pipeline."}
 
 # ==========================================
 # MENU MANAGEMENT
