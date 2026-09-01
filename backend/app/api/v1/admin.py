@@ -164,10 +164,17 @@ async def update_admin_profile(data: ProfileUpdate, admin=Depends(SecurityEngine
         
     if updates:
         try:
-            supabase.table("cashiers").update(updates).eq("id", admin_id).execute()
+            res = supabase.table("cashiers").update(updates).eq("id", admin_id).execute()
+            
+            # Check if Supabase actually updated any row
+            if not res.data:
+                raise HTTPException(status_code=400, detail="Profile update failed: User record not found or update blocked by database policies.")
+                
             await redis_client.delete(f"cache:admin_profile:{admin_id}")
             await SecurityEngine.log_event("SECURITY", admin_id, updates.get("full_name", "Admin"), "Updated profile credentials")
         except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
             raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
             
     return {"status": "success", "message": "Profile updated successfully."}
