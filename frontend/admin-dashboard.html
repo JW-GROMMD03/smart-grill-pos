@@ -1,4 +1,3 @@
-<!-- frontend/admin-dashboard.html -->
 <!DOCTYPE html>
 <html lang="en" class="light">
 <head>
@@ -6,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Grill | Executive Dashboard</title>
     
-    <!-- BRANDING: SVG Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
     
-    <!-- SECURITY GUARD: Instantly kicks out unauthorized users and cashiers -->
     <script>
         const token = localStorage.getItem('sg_token');
         if (!token) {
@@ -116,7 +113,6 @@
             
             <div id="salesTab" class="tab-section space-y-6">
 
-                <!-- DYNAMIC SHIFT CONTROL & OVERLAP PANEL -->
                 <div class="glass-panel p-6 border-l-4 border-l-brand-primary shadow-lg space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
@@ -305,7 +301,6 @@
 
             </div>
 
-            <!-- EXPENSES TAB -->
             <div id="expensesTab" class="tab-section hidden space-y-6">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="glass-panel p-6 shadow-md lg:col-span-1 space-y-4">
@@ -371,7 +366,6 @@
                 </div>
             </div>
 
-            <!-- RECORDS TAB -->
             <div id="recordsTab" class="tab-section hidden space-y-6">
                 <div class="glass-panel p-6 shadow-md flex flex-wrap gap-4 items-center justify-between">
                     <h3 class="text-xl font-bold text-brand-primary">Comprehensive Business Records</h3>
@@ -506,7 +500,6 @@
         </main>
     </div>
 
-    <!-- BLOCK DURATION MODAL -->
     <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center">
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
             <h3 class="text-xl font-bold text-rose-500">Configure Account Block</h3>
@@ -1060,24 +1053,52 @@
             document.getElementById('blockModal').classList.add('hidden');
         }
 
+        // --- UPDATED BLOCK & STATUS LOGIC START --- //
         async function executeBlockUser() {
             const userId = document.getElementById('blockTargetUserId').value;
             const type = document.getElementById('blockDurationType').value;
-            const days = type === 'days' ? parseInt(document.getElementById('blockDaysCount').value) : null;
-            const reason = document.getElementById('blockReasonText').value;
+            let days = type === 'days' ? parseInt(document.getElementById('blockDaysCount').value) : null;
+            
+            // Safeguard: Ensure empty inputs are sent as null, not NaN, to avoid 422 errors
+            if (isNaN(days)) {
+                days = null;
+            }
+
+            // Fallback reason if empty
+            const reason = document.getElementById('blockReasonText').value || 'Account suspended. Please contact manager.';
 
             await updateUserStatus(userId, 'BLOCKED', days, reason);
             closeBlockModal();
         }
 
         async function updateUserStatus(userId, status, days=null, reason=null) {
-            await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: status, duration_days: days, reason: reason })
-            });
-            loadUsers();
+            try {
+                const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Content-Type': 'application/json', // Mandatory Header
+                        'Authorization': `Bearer ${localStorage.getItem('sg_token')}`
+                    },
+                    body: JSON.stringify({ 
+                        status: status, 
+                        duration_days: days, 
+                        reason: reason 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    loadUsers();
+                } else {
+                    alert("Failed to update user status: " + (data.detail || data.message || "Unknown error"));
+                }
+            } catch (error) {
+                console.error("Error updating user status:", error);
+                alert("Network error occurred.");
+            }
         }
+        // --- UPDATED BLOCK & STATUS LOGIC END --- //
 
         async function deleteUser(userId) {
             if(!confirm("Permanently delete this user account?")) return;

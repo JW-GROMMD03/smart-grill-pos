@@ -4,7 +4,7 @@ import string
 import uuid
 import calendar
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -255,6 +255,11 @@ async def delete_menu_item(item_id: str, admin=Depends(SecurityEngine.verify_tok
 # USER MANAGEMENT & ACCESS CONTROL
 # ==========================================
 
+class UserBlockRequest(BaseModel):
+    status: str 
+    duration_days: Optional[Union[int, str]] = None 
+    reason: Optional[str] = "Please contact manager for clarification."
+
 @router.get("/users")
 async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
     try:
@@ -276,8 +281,15 @@ async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
 async def update_user_status(user_id: str, payload: UserBlockRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
         blocked_until = None
+        
+        # Safely convert duration to an integer, ignoring empty strings from the frontend
         if payload.status.upper() == 'BLOCKED' and payload.duration_days:
-            blocked_until = (datetime.now(timezone.utc) + timedelta(days=payload.duration_days)).isoformat()
+            try:
+                days = int(payload.duration_days)
+                if days > 0:
+                    blocked_until = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+            except (ValueError, TypeError):
+                pass # Ignore invalid strings like "" or "none"
         
         update_data = {
             "status": payload.status.upper(),
