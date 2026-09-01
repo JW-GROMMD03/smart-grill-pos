@@ -374,7 +374,9 @@ async def get_filtered_expenses(
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
-        query = supabase.table("expenses").select("*, cashiers(full_name)")
+        # FIX 1: Remove the broken "cashiers(full_name)" join from the select query
+        query = supabase.table("expenses").select("*")
+        
         if date:
             query = query.eq("business_date", date)
         elif month:
@@ -388,13 +390,22 @@ async def get_filtered_expenses(
         res = query.order("created_at", desc=True).execute()
         expenses = res.data or []
 
+        # FIX 2: Fetch cashier names manually to replace the broken DB join
+        cashier_ids = list(set(e.get("recorded_by") for e in expenses if e.get("recorded_by")))
+        cashier_map = {}
+        if cashier_ids:
+            c_res = supabase.table("cashiers").select("id, full_name").in_("id", cashier_ids).execute()
+            cashier_map = {c["id"]: c["full_name"] for c in (c_res.data or [])}
+
         total_exp = sum(float(e.get("amount", 0)) for e in expenses)
         cash_exp = sum(float(e.get("cash_amount", 0)) for e in expenses)
         mpesa_exp = sum(float(e.get("mpesa_amount", 0)) for e in expenses)
 
         cashier_breakdown = {}
         for e in expenses:
-            c_name = e.get("cashiers", {}).get("full_name") if e.get("cashiers") else "Admin / System"
+            # FIX 3: Assign the name safely, defaulting to Admin if not in the cashiers table
+            c_name = cashier_map.get(e.get("recorded_by"), "Admin / System")
+            e["cashiers"] = {"full_name": c_name} # Inject for frontend compatibility
             cashier_breakdown[c_name] = cashier_breakdown.get(c_name, 0) + float(e.get("amount", 0))
 
         daily_totals = {}
@@ -429,8 +440,9 @@ async def get_comprehensive_records(
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
+        # Keep the sales join (it still works), but remove the broken expenses join
         sales_query = supabase.table("sales").select("*, cashiers(full_name, assigned_shift)")
-        exp_query = supabase.table("expenses").select("*, cashiers(full_name)")
+        exp_query = supabase.table("expenses").select("*") 
 
         if date:
             sales_query = sales_query.eq("business_date", date)
@@ -449,6 +461,17 @@ async def get_comprehensive_records(
 
         sales = sales_res.data or []
         expenses = exp_res.data or []
+
+        # Manually map cashier names for expenses to prevent frontend crashes
+        exp_cashier_ids = list(set(e.get("recorded_by") for e in expenses if e.get("recorded_by")))
+        exp_cashier_map = {}
+        if exp_cashier_ids:
+            c_res = supabase.table("cashiers").select("id, full_name").in_("id", exp_cashier_ids).execute()
+            exp_cashier_map = {c["id"]: c["full_name"] for c in (c_res.data or [])}
+            
+        for e in expenses:
+            c_name = exp_cashier_map.get(e.get("recorded_by"), "Admin / System")
+            e["cashiers"] = {"full_name": c_name}
 
         if shift and shift != "All":
             target_shift = shift.strip().lower()
