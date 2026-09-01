@@ -88,8 +88,8 @@
     </div>
 
     <script>
-        // Explicitly defining the backend URL
-        const BASE_URL = 'http://127.0.0.1:8000';
+        // FIXED: Empty string for relative production routing
+        const BASE_URL = '';
 
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
@@ -122,7 +122,6 @@
             document.getElementById('btnSpinner').classList.remove('hidden'); alert.classList.add('hidden');
 
             try {
-                // Fixed routing utilizing BASE_URL
                 const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email, password: password })
@@ -159,7 +158,6 @@
             document.getElementById('otpSpinner').classList.remove('hidden'); alert.classList.add('hidden');
 
             try {
-                // Fixed routing utilizing BASE_URL
                 const res = await fetch(`${BASE_URL}/api/v1/auth/verify-otp`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: activeEmail, otp: otp })
@@ -167,9 +165,11 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('access_token', data.token);
+                    // FIXED: Saving as sg_token for consistency with the dashboard
+                    localStorage.setItem('sg_token', data.token);
                     document.getElementById('otpBtnText').innerText = "Access Granted";
-                    setTimeout(() => { window.location.href = '/frontend/admin-dashboard.html'; }, 500);
+                    // FIXED: Adjusted path to match Render deployment structure
+                    setTimeout(() => { window.location.href = '/admin-dashboard.html'; }, 500);
                 } else {
                     throw new Error(data.detail || "Verification failed.");
                 }
