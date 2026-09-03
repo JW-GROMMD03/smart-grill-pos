@@ -91,7 +91,20 @@ async function loadDynamicMenu() {
     if (!res.ok) throw new Error("Failed to load data from server");
     
     const items = await res.json();
-    if(items.length === 0) throw new Error("Menu is empty");
+    
+    // Graceful handling of empty menu state without throwing a console error
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        if(container) {
+          container.innerHTML = `
+            <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+              <span class="text-4xl mb-3">🍽️</span>
+              <p class="font-extrabold text-amber-400 text-sm">The catalog is currently empty.</p>
+              <p class="text-xs text-slate-400 mt-2">Waiting for the Admin to add and activate menu items.</p>
+            </div>
+          `;
+        }
+        return;
+    }
 
     renderMenuGrid(items);
   } catch (e) {
@@ -100,8 +113,8 @@ async function loadDynamicMenu() {
       container.innerHTML = `
         <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-red-500/10 border border-red-500/20 rounded-2xl">
           <span class="text-4xl mb-3">⚠️</span>
-          <p class="font-extrabold text-red-400 text-sm">Failed to load the menu.</p>
-          <p class="text-xs text-slate-400 mt-2">The system encountered an error connecting to the database or cache. Please check your connection and refresh.</p>
+          <p class="font-extrabold text-red-400 text-sm">Network Error.</p>
+          <p class="text-xs text-slate-400 mt-2">The system encountered an error connecting to the database. Please check your connection and refresh.</p>
           <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-slate-800 text-slate-200 text-xs font-bold rounded hover:bg-slate-700">Reload Menu</button>
         </div>
       `;
@@ -113,7 +126,7 @@ function renderMenuGrid(items) {
   const container = document.getElementById('dynamicMenuGrid');
   if(!container) return;
 
-  // FIX: Force the POS to ignore disabled items, protecting it from Admin cache pollution
+  // Force the POS to ignore disabled items, protecting it from Admin cache pollution
   items = items.filter(i => i.is_active === true);
 
   const getCat = (cat) => items.filter(i => i.category === cat).sort((a,b) => a.price - b.price);
@@ -131,7 +144,6 @@ function renderMenuGrid(items) {
   const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded p-1.5 text-center transition"><span class="text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
 
   container.innerHTML = `
-    <!-- TILAPIA VARIATIONS -->
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -139,7 +151,6 @@ function renderMenuGrid(items) {
        </div>
     </div>
 
-    <!-- MEAT CUTS -->
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS</h3>
        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -159,22 +170,18 @@ function renderMenuGrid(items) {
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-        <!-- WETFRY -->
         <div>
            <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍲</span> WETFRY</h3>
            <div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div>
         </div>
-        <!-- GREENS -->
         <div>
            <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥬</span> GREENS & KACHUMBARI</h3>
            <div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div>
         </div>
-        <!-- DRINKS -->
         <div>
            <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥤</span> DRINKS & WATER</h3>
            <div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div>
         </div>
-        <!-- CHIPS -->
         <div>
            <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍟</span> CHIPS & PACKAGING</h3>
            <div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div>
@@ -337,7 +344,6 @@ async function submitOrder() {
   }
 }
 
-/* --- HOLD QUEUE LOGIC --- */
 function holdCurrentOrder() {
   if (cart.length === 0) return alert("Cart is empty.");
   if (holdQueue.length >= 6) return alert("Hold queue is full (Max 6 allowed).");
@@ -382,7 +388,6 @@ function resumeHold(index) {
   updateState();
 }
 
-/* --- EXPENSE & RECEIPTS LOGIC --- */
 async function submitExpense(e) {
   e.preventDefault();
   const desc = document.getElementById('expDesc').value.trim();
@@ -473,7 +478,6 @@ async function executeExpenseDelete(id) {
   }
 }
 
-/* --- ADMIN QR OVERRIDE SYSTEM --- */
 async function requestAdminAction(actionType, targetId) {
   if (actionType === 'cart_clear' && cart.length === 0) return;
 
@@ -486,7 +490,6 @@ async function requestAdminAction(actionType, targetId) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getAuthToken()}`
       },
-      // Safely fallback user.id to prevent 422 Bad Request errors if undefined
       body: JSON.stringify({ target_id: targetId.toString(), cashier_id: user.id || "00000000-0000-0000-0000-000000000000" })
     });
 
@@ -509,13 +512,10 @@ function openAdminModal(token, shortCode, actionType, targetId) {
   const modal = document.getElementById('adminModal');
   const qrContainer = document.getElementById('adminQrCode');
   
-  // FIX: Unhide the modal FIRST before generating the QR code.
-  // If the parent is display: none, qrcode.js draws a 0x0 blank canvas.
   modal.classList.remove('hidden');
   qrContainer.innerHTML = '';
 
   new QRCode(qrContainer, {
-    // FIX: Format payload so the admin scanner processes it immediately
     text: `smartgrill://approve-delete?token=${token}`,
     width: 150,
     height: 150

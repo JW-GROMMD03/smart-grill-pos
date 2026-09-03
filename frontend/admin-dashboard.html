@@ -13,7 +13,6 @@
             window.location.replace('/login.html');
         } else {
             try {
-                // Safely decode JWT payload
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                 const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
@@ -21,7 +20,6 @@
                 }).join(''));
                 const payload = JSON.parse(jsonPayload);
                 
-                // If the user is a cashier, redirect them immediately to prevent API crashes
                 if (payload.role !== 'admin') {
                     window.location.replace('/login.html');
                 }
@@ -61,129 +59,140 @@
         .scanner-container { position: relative; overflow: hidden; border-radius: 1rem; border: 4px solid #334155; background: #000; }
         .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: #10b981; box-shadow: 0 0 15px #10b981; animation: scan 2.5s infinite linear; pointer-events: none; }
         @keyframes scan { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        #qrReader video {
-            object-fit: cover !important;
-            width: 100% !important;
-            height: 100% !important;
-            border-radius: 1rem;
-        }
+        #qrReader video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: 1rem; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 dark:bg-brand-dark dark:text-slate-100 font-sans min-h-screen flex flex-col">
     
-    <header class="h-[72px] bg-white dark:bg-brand-card border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-50">
-        <div class="flex items-center space-x-4">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+    <header class="h-[72px] bg-white dark:bg-brand-card border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
+        <div class="flex items-center space-x-3 md:space-x-4">
+            <!-- Mobile Menu Toggle Button -->
+            <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <div>
-                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">Smart Grill POS</h1>
-                <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Enterprise Analytics</p>
+                <h1 class="text-lg md:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">Smart Grill</h1>
+                <p class="hidden md:block text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-widest">Enterprise Analytics</p>
             </div>
         </div>
-        <div class="flex items-center space-x-6">
-            <div class="flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 shadow-inner">
+        <div class="flex items-center space-x-4 md:space-x-6">
+            <!-- Hidden on small screens to save space -->
+            <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 shadow-inner">
                 <span class="text-xs font-bold text-slate-500 uppercase mr-2">Target Date:</span>
-                <input type="date" id="dateFilter" onchange="loadAllData()" class="bg-transparent text-sm font-medium text-slate-700 dark:text-white focus:outline-none">
+                <input type="date" id="dateFilter" onchange="syncDateFilters('desktop')" class="bg-transparent text-sm font-medium text-slate-700 dark:text-white focus:outline-none">
             </div>
             <button onclick="toggleTheme()" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
                 <svg class="w-5 h-5 text-slate-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
             </button>
-            <div class="flex items-center space-x-3 pl-4 border-l border-slate-200 dark:border-slate-700">
-                <button onclick="openProfile()" class="w-9 h-9 rounded-full bg-brand-accent flex items-center justify-center font-bold text-white shadow-md hover:ring-2 hover:ring-brand-accent transition cursor-pointer" title="Edit Profile">AD</button>
-                <button onclick="logout()" class="text-sm font-bold text-rose-500 hover:text-rose-600 transition">Log Out</button>
+            <div class="flex items-center space-x-3 pl-3 md:pl-4 border-l border-slate-200 dark:border-slate-700">
+                <button onclick="openProfile()" class="w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-accent flex items-center justify-center font-bold text-white shadow-md hover:ring-2 hover:ring-brand-accent transition cursor-pointer" title="Edit Profile">AD</button>
+                <button onclick="logout()" class="hidden md:block text-sm font-bold text-rose-500 hover:text-rose-600 transition">Log Out</button>
             </div>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 overflow-hidden relative">
         
-        <aside class="w-64 bg-white dark:bg-brand-card border-r border-slate-200 dark:border-slate-800 p-4 space-y-2 overflow-y-auto">
+        <!-- Sidebar updated with absolute positioning and transforms for mobile -->
+        <aside id="sidebar" class="absolute md:relative z-40 w-64 h-full bg-white dark:bg-brand-card border-r border-slate-200 dark:border-slate-800 p-4 space-y-2 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+            
+            <!-- Mobile Date Filter (Visible only in mobile sidebar) -->
+            <div class="md:hidden mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Target Date</label>
+                <input type="date" id="mobileDateFilter" onchange="syncDateFilters('mobile')" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-700 dark:text-white outline-none">
+            </div>
+
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Dashboards</p>
             <button onclick="switchTab('sales')" id="nav-sales" class="tab-btn w-full text-left py-3 px-4 rounded-xl font-semibold bg-brand-primary/10 text-brand-primary transition">Live Sales & Cash</button>
-            <button onclick="switchTab('analytics')" id="nav-analytics" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Deep BI Analysis</button>
-            <button onclick="switchTab('expenses')" id="nav-expenses" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Expense Tracker</button>
-            <button onclick="switchTab('records')" id="nav-records" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Comprehensive Records</button>
-            <button onclick="switchTab('menu')" id="nav-menu" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Menu Catalog</button>
-            <button onclick="switchTab('users')" id="nav-users" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">User Management</button>
-            <button onclick="switchTab('scanner')" id="nav-scanner" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:bg-slate-800/50 font-semibold text-slate-600 dark:text-slate-400 transition">Smart Deletion</button>
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Deep BI Analysis</button>
+            <button onclick="switchTab('expenses')" id="nav-expenses" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Expense Tracker</button>
+            <button onclick="switchTab('records')" id="nav-records" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Comprehensive Records</button>
+            <button onclick="switchTab('menu')" id="nav-menu" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Menu Catalog</button>
+            <button onclick="switchTab('users')" id="nav-users" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">User Management</button>
+            <button onclick="switchTab('scanner')" id="nav-scanner" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Smart Deletion</button>
+            
+            <!-- Mobile Log Out -->
+            <button onclick="logout()" class="md:hidden w-full text-left py-3 px-4 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 font-semibold text-rose-500 transition mt-4">Log Out Securely</button>
         </aside>
 
-        <main class="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50 dark:bg-brand-dark">
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 bg-slate-50 dark:bg-brand-dark w-full">
             
             <div id="salesTab" class="tab-section space-y-6">
 
-                <div class="glass-panel p-6 border-l-4 border-l-brand-primary shadow-lg space-y-4">
+                <div class="glass-panel p-4 md:p-6 border-l-4 border-l-brand-primary shadow-lg space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <div class="flex items-center space-x-2">
                                 <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Shift Overlap & Dynamic Control Panel</h3>
+                                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Dynamic Control Panel</h3>
                             </div>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage early shift starts, late shift arrival permits, and instant shift revocation.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage early shift starts and overlap permits.</p>
                         </div>
-                        <div id="shiftStatusBadges" class="flex items-center space-x-2">
+                        <div id="shiftStatusBadges" class="flex flex-wrap items-center gap-2">
                             <span id="badgeClockShift" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Clock: --</span>
                             <span id="badgeActiveMode" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">Mode: AUTO</span>
                         </div>
                     </div>
 
-                    <div id="activePermitNotice" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm flex items-center justify-between">
+                    <div id="activePermitNotice" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <span>⚠️ <strong id="permitNoticeText">Active Permit Granted</strong></span>
-                        <button onclick="managePermit('REVOKE', 'OVERLAP', 'DAY')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1 rounded font-bold transition">Stop Permit / Revoke Access</button>
+                        <button onclick="managePermit('REVOKE', 'OVERLAP', 'DAY')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded font-bold transition w-full sm:w-auto">Stop Permit</button>
                     </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                        <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
-                            🌅 Start Day Shift Early (7 AM)
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                        <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
+                            🌅 Start Day Early
                         </button>
-                        <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
-                            ⏳ Grant Day Shift Extension
+                        <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
+                            ⏳ Day Extension
                         </button>
-                        <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center">
-                            🔄 Allow Shift Overlap
+                        <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
+                            🔄 Shift Overlap
                         </button>
-                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-xs font-bold py-2.5 px-3 rounded-xl transition text-center">
-                            ⚙️ Reset to Auto Schedule
+                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl transition text-center">
+                            ⚙️ Reset to Auto
                         </button>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="glass-panel p-6 col-span-2 relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-none shadow-lg">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+                    <div class="glass-panel p-6 md:col-span-2 relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-none shadow-lg">
                         <div class="relative z-10">
-                            <p class="text-emerald-100 font-semibold uppercase tracking-wider text-sm mb-1">Live Cash At Hand</p>
-                            <h2 id="cashAtHand" class="text-5xl font-black tracking-tight">KES 0</h2>
-                            <p class="text-sm mt-3 text-emerald-100">(Total Cash Received - Total Cash Expenses)</p>
+                            <p class="text-emerald-100 font-semibold uppercase tracking-wider text-xs md:text-sm mb-1">Live Cash At Hand</p>
+                            <h2 id="cashAtHand" class="text-4xl md:text-5xl font-black tracking-tight">KES 0</h2>
+                            <p class="text-xs md:text-sm mt-3 text-emerald-100">(Cash Sales - Cash Expenses)</p>
                         </div>
-                        <svg class="absolute right-0 bottom-0 opacity-20 w-48 h-48 transform translate-x-8 translate-y-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                        <svg class="absolute right-0 bottom-0 opacity-20 w-32 md:w-48 h-32 md:h-48 transform translate-x-4 translate-y-4 md:translate-x-8 md:translate-y-8" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
                     </div>
                     <div class="glass-panel p-6 flex flex-col justify-center border-t-4 border-t-amber-500 shadow-md">
-                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold uppercase">Total Cash Sales</p>
-                        <h3 id="cashSales" class="text-3xl font-bold text-slate-800 dark:text-white mt-2">KES 0</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-semibold uppercase">Total Cash Sales</p>
+                        <h3 id="cashSales" class="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white mt-2">KES 0</h3>
                     </div>
                     <div class="glass-panel p-6 flex flex-col justify-center border-t-4 border-t-brand-primary shadow-md">
-                        <p class="text-slate-500 dark:text-slate-400 text-sm font-semibold uppercase">Total M-Pesa Sales</p>
-                        <h3 id="mpesaSales" class="text-3xl font-bold text-brand-primary mt-2">KES 0</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-semibold uppercase">Total M-Pesa Sales</p>
+                        <h3 id="mpesaSales" class="text-2xl md:text-3xl font-bold text-brand-primary mt-2">KES 0</h3>
                     </div>
                 </div>
 
                 <div class="glass-panel overflow-hidden shadow-md">
-                    <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800/50">
-                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Live Transactions Feed</h3>
+                    <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800/50">
+                        <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Transactions Feed</h3>
                         <div class="flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
-                            <span class="flex h-2.5 w-2.5 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
-                            <span class="text-xs font-bold text-green-700 dark:text-green-400 uppercase">Live Sync</span>
+                            <span class="flex h-2 w-2 md:h-2.5 md:w-2.5 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span><span class="relative inline-flex rounded-full h-full w-full bg-green-500"></span></span>
+                            <span class="text-[10px] md:text-xs font-bold text-green-700 dark:text-green-400 uppercase">Syncing</span>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left data-table">
+                        <table class="w-full text-left data-table whitespace-nowrap">
                             <thead>
                                 <tr>
                                     <th>Time</th>
-                                    <th>Cashier & Shift</th>
-                                    <th>Order Details</th>
-                                    <th>Payment</th>
+                                    <th>Cashier</th>
+                                    <th>Details</th>
+                                    <th>Method</th>
                                     <th class="text-right">Amount</th>
                                 </tr>
                             </thead>
@@ -196,10 +205,10 @@
             <div id="analyticsTab" class="tab-section hidden space-y-8">
                 
                 <div>
-                    <h2 class="text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-8 bg-brand-accent rounded mr-3"></span> Meat Diagnostics</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-brand-accent rounded mr-3"></span> Meat Diagnostics</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                         <div class="glass-panel overflow-hidden shadow-md">
-                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Beef Analysis</h3></div>
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Beef</h3></div>
                             <table class="w-full data-table">
                                 <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
                                 <tbody>
@@ -209,13 +218,13 @@
                                     <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-primary">Total Sold</td><td class="text-right font-bold text-brand-primary" id="beefTotKg">0 KG</td></tr>
                                 </tbody>
                             </table>
-                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-xs md:text-sm">
                                 <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="beefCash">0</span></div>
                                 <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="beefMpesa">0</span></div>
                             </div>
                         </div>
                         <div class="glass-panel overflow-hidden shadow-md">
-                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Mbuzi Analysis</h3></div>
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Mbuzi</h3></div>
                             <table class="w-full data-table">
                                 <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
                                 <tbody>
@@ -225,13 +234,13 @@
                                     <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-secondary">Total Sold</td><td class="text-right font-bold text-brand-secondary" id="mbuziTotKg">0 KG</td></tr>
                                 </tbody>
                             </table>
-                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-xs md:text-sm">
                                 <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="mbuziCash">0</span></div>
                                 <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="mbuziMpesa">0</span></div>
                             </div>
                         </div>
                         <div class="glass-panel overflow-hidden shadow-md">
-                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">Chicken Analysis</h3></div>
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Chicken</h3></div>
                             <table class="w-full data-table">
                                 <thead><tr><th>Cut</th><th class="text-right">Qty</th></tr></thead>
                                 <tbody>
@@ -241,7 +250,7 @@
                                     <tr class="bg-slate-50 dark:bg-slate-800/50"><td class="font-bold text-brand-accent">Total Sold</td><td class="text-right font-bold text-brand-accent" id="chickenTotKg">0 KG</td></tr>
                                 </tbody>
                             </table>
-                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700 flex justify-between text-xs md:text-sm">
                                 <div><span class="text-slate-500">Cash:</span> <span class="font-bold text-emerald-500" id="chickenCash">0</span></div>
                                 <div><span class="text-slate-500">Mpesa:</span> <span class="font-bold text-brand-primary" id="chickenMpesa">0</span></div>
                             </div>
@@ -250,52 +259,58 @@
                 </div>
 
                 <div>
-                    <h2 class="text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-8 bg-blue-500 rounded mr-3"></span> Fish Revenue & Movement</h2>
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-blue-500 rounded mr-3"></span> Fish Revenue</h2>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 glass-panel p-6 shadow-md">
-                            <h3 class="font-bold text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point</h3>
-                            <div class="relative w-full h-64">
+                        <div class="lg:col-span-2 glass-panel p-4 md:p-6 shadow-md">
+                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point</h3>
+                            <div class="relative w-full h-48 md:h-64">
                                 <canvas id="fishChart"></canvas>
                             </div>
                         </div>
-                        <div class="glass-panel p-6 flex flex-col justify-center space-y-6 shadow-md border-t-4 border-t-blue-500">
+                        <div class="glass-panel p-4 md:p-6 flex flex-col justify-center space-y-6 shadow-md border-t-4 border-t-blue-500">
                             <div>
-                                <p class="text-sm font-semibold text-slate-500 uppercase">Total Fish Revenue</p>
-                                <h3 class="text-3xl font-black text-blue-500 mt-1" id="fishTotalRev">KES 0</h3>
+                                <p class="text-xs md:text-sm font-semibold text-slate-500 uppercase">Total Revenue</p>
+                                <h3 class="text-2xl md:text-3xl font-black text-blue-500 mt-1" id="fishTotalRev">KES 0</h3>
                             </div>
-                            <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
-                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash Generated</span><span class="font-bold text-emerald-500" id="fishCash">KES 0</span></div>
-                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa Generated</span><span class="font-bold text-brand-primary" id="fishMpesa">KES 0</span></div>
+                            <div class="pt-4 border-t border-slate-200 dark:border-slate-700 text-sm">
+                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash</span><span class="font-bold text-emerald-500" id="fishCash">KES 0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa</span><span class="font-bold text-brand-primary" id="fishMpesa">KES 0</span></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     <div class="glass-panel overflow-hidden shadow-md">
-                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-emerald-500">Individual Greens</h3></div>
-                        <table class="w-full data-table">
-                            <thead><tr><th>Green Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
-                            <tbody id="greensTableBody"></tbody>
-                        </table>
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-emerald-500">Greens</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full data-table">
+                                <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                                <tbody id="greensTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="glass-panel overflow-hidden shadow-md">
-                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-amber-500">Sides & Accompaniments</h3></div>
-                        <table class="w-full data-table">
-                            <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
-                            <tbody id="sidesTableBody"></tbody>
-                        </table>
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-amber-500">Sides</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full data-table">
+                                <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                                <tbody id="sidesTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="glass-panel overflow-hidden shadow-md">
-                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-lg text-rose-500">Beverages Analytics</h3></div>
-                        <table class="w-full data-table">
-                            <thead><tr><th>Beverage</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
-                            <tbody>
-                                <tr><td class="font-bold text-red-500">Coca-Cola</td><td class="text-right" id="cokeQty">0</td><td class="text-right font-bold text-emerald-500" id="cokeRev">0</td></tr>
-                                <tr><td class="font-bold text-blue-500">Pepsi</td><td class="text-right" id="pepsiQty">0</td><td class="text-right font-bold text-emerald-500" id="pepsiRev">0</td></tr>
-                                <tr><td class="font-bold text-cyan-500">Water</td><td class="text-right" id="waterQty">0</td><td class="text-right font-bold text-emerald-500" id="waterRev">0</td></tr>
-                            </tbody>
-                        </table>
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-rose-500">Beverages</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full data-table">
+                                <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="font-bold text-red-500">Coca-Cola</td><td class="text-right" id="cokeQty">0</td><td class="text-right font-bold text-emerald-500" id="cokeRev">0</td></tr>
+                                    <tr><td class="font-bold text-blue-500">Pepsi</td><td class="text-right" id="pepsiQty">0</td><td class="text-right font-bold text-emerald-500" id="pepsiRev">0</td></tr>
+                                    <tr><td class="font-bold text-cyan-500">Water</td><td class="text-right" id="waterQty">0</td><td class="text-right font-bold text-emerald-500" id="waterRev">0</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -303,33 +318,33 @@
 
             <div id="expensesTab" class="tab-section hidden space-y-6">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="glass-panel p-6 shadow-md lg:col-span-1 space-y-4">
-                        <h3 class="text-xl font-bold text-brand-primary">Record New Expense</h3>
+                    <div class="glass-panel p-4 md:p-6 shadow-md lg:col-span-1 space-y-4">
+                        <h3 class="text-lg md:text-xl font-bold text-brand-primary">Record Expense</h3>
                         <div>
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Expense Date</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Date</label>
                             <input type="date" id="expDate" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Shift</label>
                             <select id="expShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
-                                <option value="Day">Day Shift</option>
-                                <option value="Night">Night Shift</option>
+                                <option value="Day">Day</option>
+                                <option value="Night">Night</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Description / Name</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Description</label>
                             <input type="text" id="expDesc" placeholder="e.g. Charcoal" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Total Amount (KES)</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Total Amount</label>
                             <input type="number" id="expAmt" placeholder="0.00" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Payment Method</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Method</label>
                             <select id="expType" onchange="toggleExpenseSplit()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
                                 <option value="CASH">Cash</option>
                                 <option value="MPESA">M-Pesa</option>
-                                <option value="PARTIAL">Partial (Cash & M-Pesa)</option>
+                                <option value="PARTIAL">Partial</option>
                             </select>
                         </div>
                         <div id="expPartialDiv" class="hidden space-y-3">
@@ -339,27 +354,27 @@
                         <button onclick="submitExpense()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-3 rounded-lg shadow-lg transition">Save Expense</button>
                     </div>
 
-                    <div class="glass-panel p-6 shadow-md lg:col-span-2 space-y-6">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Monthly & Daily Expense Analytics</h3>
-                            <input type="month" id="expMonthFilter" onchange="loadExpenses()" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                    <div class="glass-panel p-4 md:p-6 shadow-md lg:col-span-2 space-y-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h3 class="text-lg md:text-xl font-bold text-slate-800 dark:text-white">Expense Analytics</h3>
+                            <input type="month" id="expMonthFilter" onchange="loadExpenses()" class="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
                         </div>
-                        <div class="grid grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
                                 <p class="text-xs uppercase text-slate-400 font-bold">Total Expenses</p>
-                                <h4 id="statTotalExp" class="text-2xl font-black text-rose-500 mt-1">KES 0</h4>
+                                <h4 id="statTotalExp" class="text-xl md:text-2xl font-black text-rose-500 mt-1">KES 0</h4>
                             </div>
                             <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
                                 <p class="text-xs uppercase text-slate-400 font-bold">Cash Outflows</p>
-                                <h4 id="statCashExp" class="text-2xl font-black text-amber-500 mt-1">KES 0</h4>
+                                <h4 id="statCashExp" class="text-xl md:text-2xl font-black text-amber-500 mt-1">KES 0</h4>
                             </div>
                             <div class="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
-                                <p class="text-xs uppercase text-slate-400 font-bold">Highest Expense Day</p>
-                                <h4 id="statHighestDay" class="text-lg font-black text-brand-primary mt-1">-</h4>
+                                <p class="text-xs uppercase text-slate-400 font-bold">Highest Day</p>
+                                <h4 id="statHighestDay" class="text-base md:text-lg font-black text-brand-primary mt-1">-</h4>
                             </div>
                         </div>
                         <div>
-                            <h4 class="font-bold text-sm text-slate-500 uppercase mb-3">Expenses Logged By Cashier / Admin</h4>
+                            <h4 class="font-bold text-sm text-slate-500 uppercase mb-3">Logged By</h4>
                             <div id="cashierExpenseBreakdown" class="space-y-2 text-sm"></div>
                         </div>
                     </div>
@@ -367,58 +382,62 @@
             </div>
 
             <div id="recordsTab" class="tab-section hidden space-y-6">
-                <div class="glass-panel p-6 shadow-md flex flex-wrap gap-4 items-center justify-between">
-                    <h3 class="text-xl font-bold text-brand-primary">Comprehensive Business Records</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <select id="recType" onchange="toggleRecordFilters()" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
-                            <option value="date">Filter by Date</option>
-                            <option value="month">Filter by Month</option>
-                            <option value="year">Filter by Year</option>
+                <div class="glass-panel p-4 md:p-6 shadow-md flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
+                    <h3 class="text-lg md:text-xl font-bold text-brand-primary">Comprehensive Records</h3>
+                    <div class="flex flex-wrap gap-2 w-full xl:w-auto">
+                        <select id="recType" onchange="toggleRecordFilters()" class="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                            <option value="date">By Date</option>
+                            <option value="month">By Month</option>
+                            <option value="year">By Year</option>
                         </select>
-                        <input type="date" id="recDateInput" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
-                        <input type="month" id="recMonthInput" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden">
-                        <input type="number" id="recYearInput" placeholder="YYYY" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden w-24">
-                        <select id="recShift" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                        <input type="date" id="recDateInput" class="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
+                        <input type="month" id="recMonthInput" class="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden">
+                        <input type="number" id="recYearInput" placeholder="YYYY" class="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm hidden w-24">
+                        <select id="recShift" class="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm">
                             <option value="All">All Shifts</option>
                             <option value="Day">Day Shift</option>
                             <option value="Night">Night Shift</option>
                         </select>
-                        <button onclick="loadComprehensiveRecords()" class="bg-brand-primary text-white font-bold px-4 py-2 rounded-lg text-sm shadow hover:bg-brand-secondary">Generate</button>
+                        <button onclick="loadComprehensiveRecords()" class="w-full sm:w-auto bg-brand-primary text-white font-bold px-6 py-2 rounded-lg text-sm shadow hover:bg-brand-secondary">Generate</button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Total Revenue</p><h3 id="recTotalSales" class="text-3xl font-black text-emerald-500 mt-1">KES 0</h3></div>
-                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Total Expenses</p><h3 id="recTotalExp" class="text-3xl font-black text-rose-500 mt-1">KES 0</h3></div>
-                    <div class="glass-panel p-6"><p class="text-sm font-bold text-slate-400">Net Profit</p><h3 id="recNetProfit" class="text-3xl font-black text-brand-primary mt-1">KES 0</h3></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-panel p-4 md:p-6"><p class="text-xs md:text-sm font-bold text-slate-400">Revenue</p><h3 id="recTotalSales" class="text-2xl md:text-3xl font-black text-emerald-500 mt-1">KES 0</h3></div>
+                    <div class="glass-panel p-4 md:p-6"><p class="text-xs md:text-sm font-bold text-slate-400">Expenses</p><h3 id="recTotalExp" class="text-2xl md:text-3xl font-black text-rose-500 mt-1">KES 0</h3></div>
+                    <div class="glass-panel p-4 md:p-6"><p class="text-xs md:text-sm font-bold text-slate-400">Net Profit</p><h3 id="recNetProfit" class="text-2xl md:text-3xl font-black text-brand-primary mt-1">KES 0</h3></div>
                 </div>
 
-                <div class="glass-panel p-6 overflow-x-auto shadow-md">
-                    <h4 class="font-bold text-lg mb-4 text-slate-800 dark:text-white">Transaction & Ledger Archive</h4>
-                    <table class="w-full data-table">
-                        <thead><tr><th>Date & Shift</th><th>Description / Items</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
-                        <tbody id="comprehensiveTableBody"></tbody>
-                    </table>
+                <div class="glass-panel p-0 overflow-hidden shadow-md">
+                    <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                        <h4 class="font-bold text-base text-slate-800 dark:text-white">Ledger Archive</h4>
+                    </div>
+                    <div class="overflow-x-auto p-4 md:p-6">
+                        <table class="w-full data-table whitespace-nowrap">
+                            <thead><tr><th>Date & Shift</th><th>Description</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
+                            <tbody id="comprehensiveTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <div id="menuTab" class="tab-section hidden space-y-6">
-                <div class="glass-panel p-6 shadow-md">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
+                <div class="glass-panel p-4 md:p-6 shadow-md">
+                    <div class="flex flex-col mb-6 space-y-4">
                         <div>
-                            <h3 class="font-bold text-xl text-brand-primary">Catalog Management</h3>
-                            <p class="text-sm text-slate-500 mt-1">Changes are synced to the cashier cache at lightning speed.</p>
+                            <h3 class="font-bold text-lg md:text-xl text-brand-primary">Catalog Management</h3>
+                            <p class="text-xs md:text-sm text-slate-500 mt-1">Changes are synced to cashiers instantly.</p>
                         </div>
-                        <div class="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <input type="text" id="menuName" placeholder="Item Name" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <input type="text" id="menuName" placeholder="Item Name" class="col-span-1 sm:col-span-2 md:col-span-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
                             
                             <select id="menuCategory" onchange="toggleSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                                 <option value="MEAT CUTS">Meat Cuts</option>
-                                <option value="TILAPIA VARIATIONS">Tilapia Variations</option>
+                                <option value="TILAPIA VARIATIONS">Tilapia</option>
                                 <option value="WETFRY">Wet Fry</option>
-                                <option value="GREENS & KACHUMBARI">Greens & Kachumbari</option>
-                                <option value="CHIPS & PACKAGING">Chips & Packaging</option>
-                                <option value="DRINKS & WATER">Drinks & Water</option>
+                                <option value="GREENS & KACHUMBARI">Greens</option>
+                                <option value="CHIPS & PACKAGING">Chips</option>
+                                <option value="DRINKS & WATER">Drinks</option>
                             </select>
                             
                             <select id="menuSubCategory" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
@@ -427,21 +446,21 @@
                                 <option value="mbuzi">Mbuzi</option>
                             </select>
                             
-                            <input type="number" id="menuPrice" placeholder="Price (KES)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm w-32 focus:ring-2 outline-none">
+                            <input type="number" id="menuPrice" placeholder="Price (KES)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                             
-                            <button onclick="addMenuItem()" class="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-2 rounded font-bold shadow-md transition">Add</button>
+                            <button onclick="addMenuItem()" class="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 bg-brand-primary hover:bg-brand-secondary text-white px-6 py-2 rounded font-bold shadow-md transition">Add Item</button>
                         </div>
                     </div>
                     
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left data-table">
+                        <table class="w-full text-left data-table whitespace-nowrap">
                             <thead>
                                 <tr>
-                                    <th>Item Name</th>
+                                    <th>Item</th>
                                     <th>Category</th>
-                                    <th>Sub-Category</th>
-                                    <th>Price (KES)</th>
-                                    <th>Visibility</th>
+                                    <th>Sub</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
                                     <th class="text-right">Action</th>
                                 </tr>
                             </thead>
@@ -451,46 +470,46 @@
                 </div>
             </div>
 
-            <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="glass-panel p-8 shadow-md">
-                    <h3 class="font-bold text-xl mb-6 text-brand-primary">Onboard Cashier</h3>
+            <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div class="glass-panel p-6 shadow-md h-fit">
+                    <h3 class="font-bold text-lg md:text-xl mb-4 text-brand-primary">Onboard Cashier</h3>
                     <div class="space-y-4">
-                        <input type="text" id="regFullName" placeholder="Full Legal Name" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
-                        <input type="text" id="regId" placeholder="Username / Email" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
-                        <input type="password" id="regPin" placeholder="4-Digit Secure PIN" maxlength="4" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
-                        <select id="regShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                        <input type="text" id="regFullName" placeholder="Full Legal Name" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+                        <input type="text" id="regId" placeholder="Username" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+                        <input type="password" id="regPin" placeholder="4-Digit PIN" maxlength="4" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+                        <select id="regShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
                             <option value="Day">Day Shift</option>
                             <option value="Night">Night Shift</option>
                         </select>
-                        <button onclick="createCashier()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold p-3 rounded-lg shadow-lg transition">Authorize & Create Account</button>
+                        <button onclick="createCashier()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold p-3 rounded-lg shadow-lg transition">Create Account</button>
                     </div>
                 </div>
-                <div class="glass-panel p-8 shadow-md">
-                    <h3 class="font-bold text-xl mb-4 text-rose-500">Access Control & Accounts</h3>
-                    <p class="text-sm text-slate-500 mb-6">Manage account blocking with custom durations and permanent deletion controls.</p>
-                    <div id="userListArea" class="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <div class="glass-panel p-6 shadow-md">
+                    <h3 class="font-bold text-lg md:text-xl mb-2 text-rose-500">Access Control</h3>
+                    <p class="text-xs text-slate-500 mb-4">Manage account blocking and deletion.</p>
+                    <div id="userListArea" class="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
                         <p class="text-slate-400 italic text-sm">System accounts will populate here...</p>
                     </div>
                 </div>
             </div>
 
             <div id="scannerTab" class="tab-section hidden">
-                <div class="glass-panel p-8 max-w-2xl mx-auto flex flex-col items-center shadow-md">
-                    <h3 class="text-2xl font-bold text-rose-500 mb-2">Smart Deletion Authorization</h3>
-                    <p class="text-center text-sm text-slate-500 mb-6 max-w-md">Align the QR code within the frame, or manually enter the 6-digit remote authorization code requested by the cashier.</p>
+                <div class="glass-panel p-6 md:p-8 max-w-2xl mx-auto flex flex-col items-center shadow-md">
+                    <h3 class="text-xl md:text-2xl font-bold text-rose-500 mb-2">Deletion Auth</h3>
+                    <p class="text-center text-xs md:text-sm text-slate-500 mb-6 max-w-md">Align QR code within frame or enter 6-digit code.</p>
                     
-                    <div class="w-full max-w-sm mb-8 flex space-x-2">
+                    <div class="w-full max-w-sm mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-2">
                         <input type="text" id="manualAuthCode" placeholder="6-Digit Code" maxlength="6" class="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-center text-xl tracking-widest font-mono outline-none focus:ring-2 focus:ring-rose-500 uppercase">
-                        <button onclick="authorizeManualDeletion()" class="bg-rose-500 hover:bg-rose-600 text-white px-6 rounded-lg font-bold shadow-md transition">Delete</button>
+                        <button onclick="authorizeManualDeletion()" class="bg-rose-500 hover:bg-rose-600 text-white px-6 py-3 sm:py-0 rounded-lg font-bold shadow-md transition">Approve</button>
                     </div>
 
-                    <div class="flex items-center w-full max-w-sm mb-8 space-x-4">
+                    <div class="flex items-center w-full max-w-sm mb-6 space-x-4">
                         <hr class="flex-1 border-slate-300 dark:border-slate-700">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">OR SCAN QR</span>
+                        <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">OR SCAN QR</span>
                         <hr class="flex-1 border-slate-300 dark:border-slate-700">
                     </div>
 
-                    <div class="scanner-container w-full max-w-sm aspect-square shadow-2xl">
+                    <div class="scanner-container w-full max-w-xs sm:max-w-sm aspect-square shadow-2xl">
                         <div id="qrReader" class="w-full h-full object-cover"></div>
                         <div class="scanner-line"></div>
                     </div>
@@ -500,15 +519,16 @@
         </main>
     </div>
 
-    <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center">
+    <!-- Modals -->
+    <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
-            <h3 class="text-xl font-bold text-rose-500">Configure Account Block</h3>
+            <h3 class="text-xl font-bold text-rose-500">Block Account</h3>
             <input type="hidden" id="blockTargetUserId">
             <div>
                 <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Duration</label>
                 <select id="blockDurationType" onchange="toggleBlockDurationInput()" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
-                    <option value="indefinite">Until I Unblock Manually</option>
-                    <option value="days">Specific Number of Days</option>
+                    <option value="indefinite">Until Manual Unblock</option>
+                    <option value="days">Specific Days</option>
                 </select>
             </div>
             <div id="blockDaysDiv" class="hidden">
@@ -516,37 +536,37 @@
                 <input type="number" id="blockDaysCount" value="1" min="1" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Reason / Message for User</label>
-                <textarea id="blockReasonText" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">Please contact the manager for clarifications and other options.</textarea>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Reason</label>
+                <textarea id="blockReasonText" rows="2" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">Please contact the manager for clarifications.</textarea>
             </div>
             <div class="flex space-x-3 pt-2">
-                <button onclick="executeBlockUser()" class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-rose-600 transition">Confirm Block</button>
+                <button onclick="executeBlockUser()" class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-rose-600 transition">Confirm</button>
                 <button onclick="closeBlockModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
             </div>
         </div>
     </div>
 
-    <div id="profileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity">
-        <div class="bg-white dark:bg-brand-card p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+    <div id="profileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity p-4">
+        <div class="bg-white dark:bg-brand-card p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Admin Profile</h2>
+                <h2 class="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">Admin Profile</h2>
                 <button onclick="closeProfile()" class="text-slate-400 hover:text-rose-500 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             
-            <div class="space-y-5">
+            <div class="space-y-4 md:space-y-5">
                 <div>
-                    <label class="block text-sm font-semibold text-slate-500 mb-1">Email / Username</label>
-                    <input type="text" id="profEmail" disabled class="w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-400 cursor-not-allowed">
+                    <label class="block text-xs md:text-sm font-semibold text-slate-500 mb-1">Email / Username</label>
+                    <input type="text" id="profEmail" disabled class="w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-400 cursor-not-allowed text-sm">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-slate-500 mb-1">Full Name</label>
-                    <input type="text" id="profName" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
+                    <label class="block text-xs md:text-sm font-semibold text-slate-500 mb-1">Full Name</label>
+                    <input type="text" id="profName" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-slate-500 mb-1">New Password (Leave blank to keep current)</label>
-                    <input type="password" id="profPass" placeholder="••••••••" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
+                    <label class="block text-xs md:text-sm font-semibold text-slate-500 mb-1">New Password (Blank to keep current)</label>
+                    <input type="password" id="profPass" placeholder="••••••••" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary outline-none">
                 </div>
                 <button onclick="saveProfile()" class="w-full mt-4 bg-brand-primary hover:bg-brand-secondary text-white font-bold py-3 rounded-lg shadow-lg transition">Save Changes</button>
             </div>
@@ -566,6 +586,7 @@
         document.addEventListener("DOMContentLoaded", () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateFilter').value = today;
+            document.getElementById('mobileDateFilter').value = today;
             document.getElementById('recDateInput').value = today;
             document.getElementById('expDate').value = today;
             document.getElementById('expMonthFilter').value = today.slice(0, 7);
@@ -580,6 +601,23 @@
             loadAllData();
             connectAdminSocket();
         });
+
+        // Mobile responsiveness toggle
+        function toggleMobileMenu() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        }
+
+        // Sync inputs between mobile and desktop date filters
+        function syncDateFilters(source) {
+            const val = source === 'desktop' 
+                ? document.getElementById('dateFilter').value 
+                : document.getElementById('mobileDateFilter').value;
+            
+            document.getElementById('dateFilter').value = val;
+            document.getElementById('mobileDateFilter').value = val;
+            
+            loadAllData();
+        }
 
         function connectAdminSocket() {
             const token = localStorage.getItem('sg_token');
@@ -634,6 +672,11 @@
 
             document.getElementById(`${tab}Tab`).classList.remove('hidden');
             document.getElementById(`nav-${tab}`).className = "tab-btn w-full text-left py-3 px-4 rounded-xl font-semibold bg-brand-primary/10 text-brand-primary transition";
+
+            // Hide sidebar on mobile after clicking a link
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
 
             if (tab === 'scanner') {
                 startSmartScanner();
@@ -715,11 +758,11 @@
 
                 if (status.override) {
                     document.getElementById('badgeActiveMode').innerText = `Mode: FORCED ${status.override.shift}`;
-                    noticeText.innerText = `System Lock Active: Forced under ${status.override.shift} Shift.`;
+                    noticeText.innerText = `Lock Active: ${status.override.shift} Shift`;
                     noticeDiv.classList.remove('hidden');
                 } else if (status.permit) {
                     document.getElementById('badgeActiveMode').innerText = `Mode: ${status.permit.permit_type} PERMIT`;
-                    noticeText.innerText = `Shift Permit Active: ${status.permit.permit_type} allowed for ${status.permit.permitted_shift} Shift.`;
+                    noticeText.innerText = `${status.permit.permit_type} Permit for ${status.permit.permitted_shift} Shift`;
                     noticeDiv.classList.remove('hidden');
                 } else {
                     document.getElementById('badgeActiveMode').innerText = `Mode: AUTO (${status.effective_shift})`;
@@ -776,25 +819,25 @@
                 document.getElementById('salesTableBody').innerHTML = data.recent_transactions.map(t => {
                     const time = new Date(t.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const cashier = t.cashiers 
-                        ? `<span class="font-bold">${t.cashiers.full_name}</span> <span class="text-xs text-slate-400">(${t.cashiers.assigned_shift})</span>` 
+                        ? `<span class="font-bold block">${t.cashiers.full_name}</span> <span class="text-[10px] text-slate-400">(${t.cashiers.assigned_shift})</span>` 
                         : 'Unknown';
                     
                     let methodBadge = '';
                     const pm = (t.payment_method || '').toUpperCase();
                     
                     if (pm === 'CASH') {
-                        methodBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold">CASH</span>';
+                        methodBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] font-bold">CASH</span>';
                     } else if (pm === 'PARTIAL') {
-                        methodBadge = '<span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">PARTIAL</span>';
+                        methodBadge = '<span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold">PARTIAL</span>';
                     } else {
-                        methodBadge = '<span class="px-2 py-1 rounded bg-brand-primary/10 text-brand-primary text-xs font-bold">M-PESA</span>';
+                        methodBadge = '<span class="px-2 py-1 rounded bg-brand-primary/10 text-brand-primary text-[10px] font-bold">M-PESA</span>';
                     }
                     
                     return `
                     <tr>
                         <td class="font-medium text-slate-500">${time}</td>
                         <td>${cashier}</td>
-                        <td class="text-xs truncate max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
+                        <td class="text-[10px] md:text-xs truncate max-w-[120px] md:max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
                         <td>${methodBadge}</td>
                         <td class="text-right font-bold text-emerald-500">${formatKsh(t.total_amount)}</td>
                     </tr>`;
@@ -845,8 +888,8 @@
             if (data.sides) {
                 const s = data.sides;
                 const sidesArr = [
-                    {name: 'Chips (Regular)', d: s.chips_regular}, 
-                    {name: 'Chips (Masala)', d: s.chips_masala},
+                    {name: 'Chips', d: s.chips_regular}, 
+                    {name: 'Masala', d: s.chips_masala},
                     {name: 'Kachumbari', d: s.kachumbari}, 
                     {name: 'Wet Fry', d: s.wet_fry}
                 ].filter(item => item.d);
@@ -886,7 +929,6 @@
                 
                 if (!res.ok) {
                     if (res.status === 401 || res.status === 403) logout();
-                    console.error("Failed to fetch expenses");
                     document.getElementById('statTotalExp').innerText = 'KES 0';
                     document.getElementById('statCashExp').innerText = 'KES 0';
                     document.getElementById('statHighestDay').innerText = '-';
@@ -910,12 +952,11 @@
                             <span class="font-semibold">${name}</span>
                             <span class="font-bold text-rose-500">${formatKsh(amt)}</span>
                         </div>
-                    `).join('') || '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+                    `).join('') || '<p class="text-slate-400 italic">No expenses recorded.</p>';
                 } else {
-                    cashierDiv.innerHTML = '<p class="text-slate-400 italic">No expenses recorded for this month.</p>';
+                    cashierDiv.innerHTML = '<p class="text-slate-400 italic">No expenses recorded.</p>';
                 }
             } catch (err) {
-                console.error(err);
                 document.getElementById('cashierExpenseBreakdown').innerHTML = '<p class="text-slate-400 italic">Error loading expenses.</p>';
             }
         }
@@ -997,20 +1038,18 @@
 
                 const combined = [
                     ...(data.sales || []).map(s => ({ ...s, record_type: 'SALE', display_name: `Sale (${s.payment_method})`, amount: s.total_amount })),
-                    ...(data.expenses || []).map(e => ({ ...e, record_type: 'EXPENSE', display_name: `Expense: ${e.description}`, amount: -e.amount }))
+                    ...(data.expenses || []).map(e => ({ ...e, record_type: 'EXPENSE', display_name: `${e.description}`, amount: -e.amount }))
                 ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
                 document.getElementById('comprehensiveTableBody').innerHTML = combined.map(item => `
                     <tr>
-                        <td>${item.business_date} (${item.shift || 'Day'})</td>
-                        <td class="font-medium">${item.display_name}</td>
-                        <td><span class="px-2 py-0.5 rounded text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
+                        <td class="text-xs">${item.business_date} (${item.shift || 'Day'})</td>
+                        <td class="font-medium max-w-[120px] md:max-w-xs truncate">${item.display_name}</td>
+                        <td><span class="px-2 py-0.5 rounded text-[10px] md:text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
                         <td class="text-right font-bold ${item.record_type === 'SALE' ? 'text-emerald-500' : 'text-rose-500'}">${formatKsh(item.amount)}</td>
                     </tr>
-                `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found for this filter.</td></tr>';
-            } catch (err) {
-                console.error(err);
-            }
+                `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found.</td></tr>';
+            } catch (err) { }
         }
 
         async function loadUsers() {
@@ -1023,17 +1062,17 @@
                 
                 if (Array.isArray(users)) {
                     document.getElementById('userListArea').innerHTML = users.map(u => `
-                        <div class="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
                             <div>
-                                <h4 class="font-bold">${u.full_name} (${u.username})</h4>
-                                <p class="text-xs text-slate-400">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
+                                <h4 class="font-bold">${u.full_name} <span class="text-xs text-slate-500 font-normal">(${u.username})</span></h4>
+                                <p class="text-xs text-slate-400 mt-1">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
                             </div>
                             <div class="flex space-x-2">
                                 ${u.status === 'ACTIVE' ? 
-                                    `<button onclick="openBlockModal('${u.id}')" class="bg-amber-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
-                                    `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="bg-emerald-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
+                                    `<button onclick="openBlockModal('${u.id}')" class="flex-1 sm:flex-none bg-amber-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
+                                    `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="flex-1 sm:flex-none bg-emerald-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
                                 }
-                                <button onclick="deleteUser('${u.id}')" class="bg-rose-500 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-600 transition">Delete</button>
+                                <button onclick="deleteUser('${u.id}')" class="flex-1 sm:flex-none bg-rose-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-rose-600 transition">Delete</button>
                             </div>
                         </div>
                     `).join('') || '<p class="text-slate-400 italic">No cashiers registered.</p>';
@@ -1088,7 +1127,6 @@
                     alert("Failed to update user status: " + (data.detail || data.message || "Unknown error"));
                 }
             } catch (error) {
-                console.error("Error updating user status:", error);
                 alert("Network error occurred.");
             }
         }
@@ -1116,7 +1154,7 @@
                     <td><span class="text-[10px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded">${i.category}</span></td>
                     <td><span class="text-[10px] font-bold uppercase tracking-wider text-brand-primary">${i.sub_category || '-'}</span></td>
                     <td class="font-medium text-emerald-500">${formatKsh(i.price)}</td>
-                    <td><button onclick="toggleMenu('${i.id}', ${!i.is_active})" class="text-xs px-2 py-1 rounded font-bold ${statusBadge}">${i.is_active ? 'ENABLED' : 'DISABLED'}</button></td>
+                    <td><button onclick="toggleMenu('${i.id}', ${!i.is_active})" class="text-[10px] md:text-xs px-2 py-1 rounded font-bold ${statusBadge}">${i.is_active ? 'ENABLED' : 'DISABLED'}</button></td>
                     <td class="text-right">
                         <button onclick="deleteMenu('${i.id}')" class="text-xs font-bold text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded transition">Delete</button>
                     </td>
@@ -1275,11 +1313,9 @@
                     document.getElementById('profEmail').value = data.username || data.email || data.sub || 'smartgrill2026@gmail.com';
                     document.getElementById('profPass').value = '';
                 } else {
-                    console.error("Failed to load profile data, status:", res.status);
                     document.getElementById('profEmail').value = 'Error loading profile';
                 }
             } catch (err) {
-                console.error("Network error fetching profile:", err);
                 document.getElementById('profEmail').value = 'Network error';
             }
         }
