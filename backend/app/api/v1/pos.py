@@ -16,11 +16,16 @@ router = APIRouter()
 @router.get("/menu/")
 async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
     cached_menu = await redis_client.get("cache:menu_v4")
+    
     if cached_menu:
         if isinstance(cached_menu, bytes):
             cached_menu = cached_menu.decode('utf-8')
-        return json.loads(cached_menu)
+        
+        # PREVENT TRAP: Only return cache if it's not an empty array string
+        if cached_menu.strip() != '[]':
+            return json.loads(cached_menu)
     
+    # If cache is missing or literally '[]', fetch from primary database
     res = supabase.table("menu_items").select("*").eq("is_active", True).execute()
     menu_data = res.data or []
     
