@@ -11,10 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDynamicMenu();
   updateState(); 
   connectCashierSocket();
-  
-  // Silently re-fetch the menu every 30 seconds. 
-  // This ensures items disabled by the Admin immediately disappear from the Cashier screen.
-  setInterval(loadDynamicMenu, 30000);
 });
 
 // ==========================================
@@ -43,6 +39,8 @@ function connectCashierSocket() {
             
             // Redirect after 6 seconds to ensure the cashier reads the message
             setTimeout(() => { window.location.replace('/index.html'); }, 6000);
+        } else if (data.action === 'menu_refresh') {
+            loadDynamicMenu();
         }
     };
     
