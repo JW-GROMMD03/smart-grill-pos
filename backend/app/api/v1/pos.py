@@ -20,18 +20,11 @@ async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
     if cached_menu:
         if isinstance(cached_menu, bytes):
             cached_menu = cached_menu.decode('utf-8')
-<<<<<<< HEAD
             
         parsed_cache = json.loads(cached_menu)
         # Prevent returning a poisoned empty cache
         if parsed_cache and len(parsed_cache) > 0:
             return parsed_cache
-=======
-        
-        # PREVENT TRAP: Only return cache if it's not an empty array string
-        if cached_menu.strip() != '[]':
-            return json.loads(cached_menu)
->>>>>>> 0b1cd3270e3588d38b3f73e34a6c67440cdf3063
     
     # If cache is missing or literally '[]', fetch from primary database
     res = supabase.table("menu_items").select("*").eq("is_active", True).execute()
