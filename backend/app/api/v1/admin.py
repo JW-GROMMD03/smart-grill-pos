@@ -310,6 +310,7 @@ async def get_menu(admin=Depends(SecurityEngine.verify_token)):
 @router.post("/menu")
 async def add_menu_item(
     payload: MenuItemCreate,
+    request: Request,
     admin=Depends(SecurityEngine.verify_token)
 ):
     item_id = str(uuid.uuid4())
@@ -326,6 +327,10 @@ async def add_menu_item(
     try:
         supabase.table("menu_items").insert(db_payload).execute()
         await redis_client.delete("cache:menu_v4") 
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_cashier({"action": "menu_refresh"})
+            
         await SecurityEngine.log_event("MENU", admin.get("sub"), admin.get("username"), f"Added {payload.name} ({payload.category})")
         return {"status": "success", "message": "Item added successfully"}
     except Exception as e:
@@ -335,6 +340,7 @@ async def add_menu_item(
 async def update_menu_item(
     item_id: str, 
     payload: MenuItemUpdate, 
+    request: Request,
     admin=Depends(SecurityEngine.verify_token)
 ):
     """Enhanced feature: Updates menu item properties (price, name, category, or sub_category) dynamically."""
@@ -354,24 +360,36 @@ async def update_menu_item(
     try:
         supabase.table("menu_items").update(update_data).eq("id", item_id).execute()
         await redis_client.delete("cache:menu_v4")
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_cashier({"action": "menu_refresh"})
+            
         return {"status": "success", "message": "Menu item updated successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update item: {str(e)}")
 
 @router.patch("/menu/{item_id}/toggle")
-async def toggle_menu_item(item_id: str, is_active: bool, admin=Depends(SecurityEngine.verify_token)):
+async def toggle_menu_item(item_id: str, is_active: bool, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
         supabase.table("menu_items").update({"is_active": is_active}).eq("id", item_id).execute()
         await redis_client.delete("cache:menu_v4")
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_cashier({"action": "menu_refresh"})
+            
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to toggle item: {str(e)}")
 
 @router.delete("/menu/{item_id}")
-async def delete_menu_item(item_id: str, admin=Depends(SecurityEngine.verify_token)):
+async def delete_menu_item(item_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
         supabase.table("menu_items").delete().eq("id", item_id).execute()
         await redis_client.delete("cache:menu_v4")
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_cashier({"action": "menu_refresh"})
+            
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete item: {str(e)}")
@@ -956,4 +974,4 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
         
     except Exception as e:
         if isinstance(e, HTTPException): raise e
-        raise HTTPException(status_status=500, detail=f"Authorization execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Authorization execution failed: {str(e)}")

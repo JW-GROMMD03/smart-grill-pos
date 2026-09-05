@@ -19,12 +19,19 @@ async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
     if cached_menu:
         if isinstance(cached_menu, bytes):
             cached_menu = cached_menu.decode('utf-8')
-        return json.loads(cached_menu)
+            
+        parsed_cache = json.loads(cached_menu)
+        # Prevent returning a poisoned empty cache
+        if parsed_cache and len(parsed_cache) > 0:
+            return parsed_cache
     
     res = supabase.table("menu_items").select("*").eq("is_active", True).execute()
     menu_data = res.data or []
     
-    await redis_client.setex("cache:menu_v4", 86400, json.dumps(menu_data))
+    # Only cache valid data
+    if menu_data and len(menu_data) > 0:
+        await redis_client.setex("cache:menu_v4", 86400, json.dumps(menu_data))
+        
     return menu_data
 
 @router.post("/checkout")
@@ -68,11 +75,11 @@ async def process_checkout(
                 "sale_id": sale_id,
                 "item_name": item.item_name,
                 "category": item.category,
-                "price": item.unit_price,           
+                "price": item.unit_price,            
                 "unit_price": item.unit_price,      
                 "quantity": item.quantity,
                 "total": item.subtotal,             
-                "subtotal": item.subtotal           
+                "subtotal": item.subtotal            
             }
             for item in order.items
         ]
