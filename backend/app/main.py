@@ -44,6 +44,14 @@ class ConnectionManager:
             except Exception:
                 pass
 
+    # NEW: Push payload directly to all connected cashiers
+    async def broadcast_cashier(self, message: dict):
+        for connection in self.cashier_connections.values():
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
     async def force_logout_cashier(self, cashier_id: str, reason: str):
         if cashier_id in self.cashier_connections:
             try:
@@ -71,7 +79,7 @@ app = FastAPI(
 # Parse existing settings if any
 origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
-# ADDED: Explicitly inject your new custom domains and local testing URLs
+# Explicitly inject your custom domains and local testing URLs
 origins.extend([
     "https://smartgrillpos.com",
     "https://www.smartgrillpos.com",
