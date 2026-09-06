@@ -241,23 +241,47 @@
                     </div>
                 </div>
 
+                <!-- Split Tilapia Analytics -->
                 <div>
-                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-blue-500 rounded mr-3"></span> Fish & Mbuta Revenue</h2>
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-blue-500 rounded mr-3"></span> Tilapia Analytics</h2>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2 glass-panel p-4 md:p-6 shadow-md">
-                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point (Tilapia & Mbuta)</h3>
+                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point (Tilapia)</h3>
                             <div class="relative w-full h-48 md:h-64">
-                                <canvas id="fishChart"></canvas>
+                                <canvas id="tilapiaChart"></canvas>
                             </div>
                         </div>
                         <div class="glass-panel p-4 md:p-6 flex flex-col justify-center space-y-6 shadow-md border-t-4 border-t-blue-500">
                             <div>
-                                <p class="text-xs md:text-sm font-semibold text-slate-500 uppercase">Total Revenue</p>
-                                <h3 class="text-2xl md:text-3xl font-black text-blue-500 mt-1" id="fishTotalRev">KES 0</h3>
+                                <p class="text-xs md:text-sm font-semibold text-slate-500 uppercase">Total Tilapia Revenue</p>
+                                <h3 class="text-2xl md:text-3xl font-black text-blue-500 mt-1" id="tilapiaTotalRev">KES 0</h3>
                             </div>
                             <div class="pt-4 border-t border-slate-200 dark:border-slate-700 text-sm">
-                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash</span><span class="font-bold text-emerald-500" id="fishCash">KES 0</span></div>
-                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa</span><span class="font-bold text-brand-primary" id="fishMpesa">KES 0</span></div>
+                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash</span><span class="font-bold text-emerald-500" id="tilapiaCash">KES 0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa</span><span class="font-bold text-brand-primary" id="tilapiaMpesa">KES 0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Mbuta Analytics -->
+                <div>
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-purple-500 rounded mr-3"></span> Mbuta Analytics</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 glass-panel p-4 md:p-6 shadow-md">
+                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point (Mbuta)</h3>
+                            <div class="relative w-full h-48 md:h-64">
+                                <canvas id="mbutaChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-4 md:p-6 flex flex-col justify-center space-y-6 shadow-md border-t-4 border-t-purple-500">
+                            <div>
+                                <p class="text-xs md:text-sm font-semibold text-slate-500 uppercase">Total Mbuta Revenue</p>
+                                <h3 class="text-2xl md:text-3xl font-black text-purple-500 mt-1" id="mbutaTotalRev">KES 0</h3>
+                            </div>
+                            <div class="pt-4 border-t border-slate-200 dark:border-slate-700 text-sm">
+                                <div class="flex justify-between mb-3"><span class="text-slate-500 font-medium">Cash</span><span class="font-bold text-emerald-500" id="mbutaCash">KES 0</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 font-medium">M-Pesa</span><span class="font-bold text-brand-primary" id="mbutaMpesa">KES 0</span></div>
                             </div>
                         </div>
                     </div>
@@ -302,6 +326,7 @@
             </div>
 
             <div id="expensesTab" class="tab-section hidden space-y-6">
+                <!-- Keep expense unchanged from your original -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="glass-panel p-4 md:p-6 shadow-md lg:col-span-1 space-y-4">
                         <h3 class="text-lg md:text-xl font-bold text-brand-primary">Record Expense</h3>
@@ -367,6 +392,7 @@
             </div>
 
             <div id="recordsTab" class="tab-section hidden space-y-6">
+                <!-- Comprehensive records unchanged -->
                 <div class="glass-panel p-4 md:p-6 shadow-md flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
                     <h3 class="text-lg md:text-xl font-bold text-brand-primary">Comprehensive Records</h3>
                     <div class="flex flex-wrap gap-2 w-full xl:w-auto">
@@ -413,7 +439,7 @@
                             <h3 class="font-bold text-lg md:text-xl text-brand-primary">Catalog Management</h3>
                             <p class="text-xs md:text-sm text-slate-500 mt-1">Changes are synced to cashiers instantly.</p>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <input type="text" id="menuName" placeholder="Item Name" class="col-span-1 sm:col-span-2 md:col-span-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
                             
                             <select id="menuCategory" onchange="toggleSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
@@ -430,15 +456,26 @@
                                 <option value="DRINKS & WATER">Drinks</option>
                             </select>
                             
-                            <select id="menuSubCategory" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
-                                <option value="beef">Beef</option>
-                                <option value="chicken">Chicken</option>
-                                <option value="mbuzi">Mbuzi</option>
-                            </select>
+                            <!-- Modified Dropdowns for Meat Types and Cut Sizes -->
+                            <div id="meatOptionsContainer" class="col-span-1 sm:col-span-2 flex space-x-2">
+                                <select id="menuSubCategory" class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
+                                    <option value="beef">Beef</option>
+                                    <option value="chicken">Chicken</option>
+                                    <option value="mbuzi">Mbuzi</option>
+                                    <option value="bone_soup">Bone Soup</option>
+                                </select>
+                                
+                                <select id="menuCutSize" class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
+                                    <option value="">No Size Specific</option>
+                                    <option value="1/4kg">1/4 KG</option>
+                                    <option value="1/2kg">1/2 KG</option>
+                                    <option value="1kg">1 KG</option>
+                                </select>
+                            </div>
                             
                             <input type="number" id="menuPrice" placeholder="Price (KES)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                             
-                            <button onclick="addMenuItem()" class="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 bg-brand-primary hover:bg-brand-secondary text-white px-6 py-2 rounded font-bold shadow-md transition">Add Item</button>
+                            <button onclick="addMenuItem()" class="col-span-1 sm:col-span-2 md:col-span-5 lg:col-span-1 bg-brand-primary hover:bg-brand-secondary text-white px-6 py-2 rounded font-bold shadow-md transition">Add Item</button>
                         </div>
                     </div>
                     
@@ -461,6 +498,7 @@
             </div>
 
             <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <!-- Cashier Logic unchanged -->
                 <div class="glass-panel p-6 shadow-md h-fit">
                     <h3 class="font-bold text-lg md:text-xl mb-4 text-brand-primary">Onboard Cashier</h3>
                     <div class="space-y-4">
@@ -509,7 +547,9 @@
         </main>
     </div>
 
+    <!-- Modals -->
     <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
+        <!-- Block content -->
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
             <h3 class="text-xl font-bold text-rose-500">Block Account</h3>
             <input type="hidden" id="blockTargetUserId">
@@ -531,6 +571,26 @@
             <div class="flex space-x-3 pt-2">
                 <button onclick="executeBlockUser()" class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-rose-600 transition">Confirm</button>
                 <button onclick="closeBlockModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Menu Modal Added -->
+    <div id="editMenuModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
+            <h3 class="text-xl font-bold text-brand-primary">Edit Menu Item</h3>
+            <input type="hidden" id="editMenuId">
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Item Name</label>
+                <input type="text" id="editMenuNameModal" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Price (KES)</label>
+                <input type="number" id="editMenuPriceModal" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+            </div>
+            <div class="flex space-x-3 pt-4">
+                <button onclick="submitEditMenu()" class="flex-1 bg-brand-primary text-white font-bold py-3 rounded-lg shadow-lg hover:bg-brand-secondary transition">Save</button>
+                <button onclick="closeEditMenuModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
             </div>
         </div>
     </div>
@@ -565,7 +625,8 @@
     <script>
         const BASE_URL = ''; 
         
-        let fishChart;
+        let tilapiaChartInstance;
+        let mbutaChartInstance;
         let qrScanner;
         let currentTab = 'sales';
         let adminWs;
@@ -586,7 +647,7 @@
                 document.documentElement.classList.add('dark');
             }
 
-            initChart();
+            initCharts();
             loadAllData();
             connectAdminSocket();
         });
@@ -675,7 +736,15 @@
 
         function toggleSubCategory() {
             const cat = document.getElementById('menuCategory').value;
-            document.getElementById('menuSubCategory').style.display = (cat === 'MEAT CUTS') ? 'block' : 'none';
+            const isMeat = (cat === 'MEAT CUTS');
+            
+            if (isMeat) {
+                document.getElementById('meatOptionsContainer').classList.remove('hidden');
+                document.getElementById('meatOptionsContainer').classList.add('flex');
+            } else {
+                document.getElementById('meatOptionsContainer').classList.remove('flex');
+                document.getElementById('meatOptionsContainer').classList.add('hidden');
+            }
         }
 
         function toggleExpenseSplit() {
@@ -848,17 +917,30 @@
                 }
             });
 
-            if (data.fish && data.fish.prices) {
-                const fPrices = Object.keys(data.fish.prices).map(p => `KES ${p}`);
-                const fAmounts = Object.values(data.fish.prices).map(v => v.amount);
+            if (data.tilapia && data.tilapia.prices) {
+                const tPrices = Object.keys(data.tilapia.prices).map(p => `KES ${p}`);
+                const tAmounts = Object.values(data.tilapia.prices).map(v => v.amount);
                 
-                fishChart.data.labels = fPrices;
-                fishChart.data.datasets[0].data = fAmounts;
-                fishChart.update();
+                tilapiaChartInstance.data.labels = tPrices;
+                tilapiaChartInstance.data.datasets[0].data = tAmounts;
+                tilapiaChartInstance.update();
                 
-                document.getElementById('fishTotalRev').innerText = formatKsh(data.fish.total_revenue);
-                document.getElementById('fishCash').innerText = formatKsh(data.fish.cash);
-                document.getElementById('fishMpesa').innerText = formatKsh(data.fish.mpesa);
+                document.getElementById('tilapiaTotalRev').innerText = formatKsh(data.tilapia.total_revenue);
+                document.getElementById('tilapiaCash').innerText = formatKsh(data.tilapia.cash);
+                document.getElementById('tilapiaMpesa').innerText = formatKsh(data.tilapia.mpesa);
+            }
+
+            if (data.mbuta && data.mbuta.prices) {
+                const mPrices = Object.keys(data.mbuta.prices).map(p => `KES ${p}`);
+                const mAmounts = Object.values(data.mbuta.prices).map(v => v.amount);
+                
+                mbutaChartInstance.data.labels = mPrices;
+                mbutaChartInstance.data.datasets[0].data = mAmounts;
+                mbutaChartInstance.update();
+                
+                document.getElementById('mbutaTotalRev').innerText = formatKsh(data.mbuta.total_revenue);
+                document.getElementById('mbutaCash').innerText = formatKsh(data.mbuta.cash);
+                document.getElementById('mbutaMpesa').innerText = formatKsh(data.mbuta.mpesa);
             }
 
             if (data.greens) {
@@ -1147,6 +1229,8 @@
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
                     : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
                 
+                const safeName = i.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
                 return `
                 <tr>
                     <td class="font-bold text-slate-700 dark:text-slate-200">${i.name}</td>
@@ -1154,22 +1238,71 @@
                     <td><span class="text-[10px] font-bold uppercase tracking-wider text-brand-primary">${i.sub_category || '-'}</span></td>
                     <td class="font-medium text-emerald-500">${formatKsh(i.price)}</td>
                     <td><button onclick="toggleMenu('${i.id}', ${!i.is_active})" class="text-[10px] md:text-xs px-2 py-1 rounded font-bold ${statusBadge}">${i.is_active ? 'ENABLED' : 'DISABLED'}</button></td>
-                    <td class="text-right">
+                    <td class="text-right flex justify-end space-x-2">
+                        <button onclick="openEditMenuModal('${i.id}', '${safeName}', ${i.price})" class="text-xs font-bold text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded transition">Edit</button>
                         <button onclick="deleteMenu('${i.id}')" class="text-xs font-bold text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded transition">Delete</button>
                     </td>
                 </tr>`;
             }).join('');
         }
 
+        function openEditMenuModal(id, currentName, currentPrice) {
+            document.getElementById('editMenuId').value = id;
+            document.getElementById('editMenuNameModal').value = currentName;
+            document.getElementById('editMenuPriceModal').value = currentPrice;
+            document.getElementById('editMenuModal').classList.remove('hidden');
+        }
+
+        function closeEditMenuModal() {
+            document.getElementById('editMenuModal').classList.add('hidden');
+        }
+
+        async function submitEditMenu() {
+            const id = document.getElementById('editMenuId').value;
+            const newName = document.getElementById('editMenuNameModal').value.trim();
+            const newPrice = parseFloat(document.getElementById('editMenuPriceModal').value);
+
+            if (!newName || isNaN(newPrice) || newPrice <= 0) {
+                alert("Please provide a valid name and price.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/menu/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: newName, price: newPrice })
+                });
+
+                if (res.ok) {
+                    closeEditMenuModal();
+                    loadMenu();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to update item: " + (err.detail || err.message));
+                }
+            } catch (err) {
+                alert("Network error updating item.");
+            }
+        }
+
         async function addMenuItem() {
-            const name = document.getElementById('menuName').value.trim();
+            let name = document.getElementById('menuName').value.trim();
             const category = document.getElementById('menuCategory').value;
             const subCategory = document.getElementById('menuSubCategory').value;
+            const cutSize = document.getElementById('menuCutSize').value;
             const price = parseFloat(document.getElementById('menuPrice').value);
             
             if (!name || isNaN(price) || price <= 0) {
                 alert("Please enter a valid item name and price.");
                 return;
+            }
+
+            if (category === 'MEAT CUTS' && cutSize !== "") {
+                name = `${name} - ${cutSize}`;
             }
 
             const payload = {
@@ -1195,6 +1328,7 @@
                 if (res.ok) {
                     document.getElementById('menuName').value = '';
                     document.getElementById('menuPrice').value = '';
+                    document.getElementById('menuCutSize').value = '';
                     loadMenu();
                 } else {
                     const err = await res.json();
@@ -1387,34 +1521,31 @@
             }
         }
 
-        function initChart() {
-            const ctx = document.getElementById('fishChart').getContext('2d');
-            fishChart = new Chart(ctx, {
+        function initCharts() {
+            // Tilapia Chart initialization
+            const ctxT = document.getElementById('tilapiaChart').getContext('2d');
+            tilapiaChartInstance = new Chart(ctxT, {
                 type: 'bar',
-                data: { 
-                    labels: [], 
-                    datasets: [{ 
-                        label: 'Quantity Sold', 
-                        data: [], 
-                        backgroundColor: '#3b82f6', 
-                        borderRadius: 6 
-                    }] 
-                },
+                data: { labels: [], datasets: [{ label: 'Quantity Sold', data: [], backgroundColor: '#3b82f6', borderRadius: 6 }] },
                 options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { display: false } 
-                    },
+                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
                     scales: { 
-                        y: { 
-                            grid: { color: 'rgba(148, 163, 184, 0.1)' }, 
-                            ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } 
-                        }, 
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } 
-                        } 
+                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } }, 
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } } 
+                    }
+                }
+            });
+
+            // Mbuta Chart initialization
+            const ctxM = document.getElementById('mbutaChart').getContext('2d');
+            mbutaChartInstance = new Chart(ctxM, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Quantity Sold', data: [], backgroundColor: '#a855f7', borderRadius: 6 }] },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } }, 
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Inter', weight: 'bold' } } } 
                     }
                 }
             });
