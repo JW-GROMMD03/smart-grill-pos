@@ -744,7 +744,11 @@ async def get_deep_analytics(
             "mbuzi": {"1/4": 0.0, "1/2": 0.0, "1kg": 0.0, "total_kg": 0.0, "revenue": 0.0, "cash": 0.0, "mpesa": 0.0},
             "chicken": {"1/4": 0.0, "1/2": 0.0, "1kg": 0.0, "total_kg": 0.0, "revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
         }
-        fish = {"prices": {}, "total_revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
+        
+        # Split Fish into Tilapia and Mbuta
+        tilapia = {"prices": {}, "total_revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
+        mbuta = {"prices": {}, "total_revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
+        
         greens = {}
         sides = {
             "kachumbari": {"qty": 0.0, "revenue": 0.0},
@@ -818,15 +822,27 @@ async def get_deep_analytics(
                 meat[target]["cash"] += item_cash
                 meat[target]["mpesa"] += item_mpesa
 
+            # Tilapia logic separated
             elif "tilapia" in cat or "tilapia" in name:
-                price = str(item.get("price") or 0)
-                if price not in fish["prices"]:
-                    fish["prices"][price] = {"amount": 0.0, "revenue": 0.0}
-                fish["prices"][price]["amount"] += qty
-                fish["prices"][price]["revenue"] += total
-                fish["total_revenue"] += total
-                fish["cash"] += item_cash
-                fish["mpesa"] += item_mpesa
+                price = str(item.get("unit_price") or unit_price)
+                if price not in tilapia["prices"]:
+                    tilapia["prices"][price] = {"amount": 0.0, "revenue": 0.0}
+                tilapia["prices"][price]["amount"] += qty
+                tilapia["prices"][price]["revenue"] += total
+                tilapia["total_revenue"] += total
+                tilapia["cash"] += item_cash
+                tilapia["mpesa"] += item_mpesa
+
+            # Mbuta logic separated
+            elif "mbuta" in cat or "mbuta" in name:
+                price = str(item.get("unit_price") or unit_price)
+                if price not in mbuta["prices"]:
+                    mbuta["prices"][price] = {"amount": 0.0, "revenue": 0.0}
+                mbuta["prices"][price]["amount"] += qty
+                mbuta["prices"][price]["revenue"] += total
+                mbuta["total_revenue"] += total
+                mbuta["cash"] += item_cash
+                mbuta["mpesa"] += item_mpesa
 
             elif "greens" in cat:
                 if name not in greens:
@@ -876,9 +892,11 @@ async def get_deep_analytics(
             meat[m_key]["cash"] = round(float(meat[m_key]["cash"]), 2)
             meat[m_key]["mpesa"] = round(float(meat[m_key]["mpesa"]), 2)
 
+        # Output payload updated
         payload = {
             "meat": meat,
-            "fish": fish,
+            "tilapia": tilapia,
+            "mbuta": mbuta,
             "greens": greens,
             "sides": sides,
             "drinks": drinks
