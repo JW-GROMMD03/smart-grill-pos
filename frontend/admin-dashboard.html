@@ -200,26 +200,29 @@
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Category</label>
                             <select id="invCat" onchange="toggleInvSubCat()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 <option value="Meat">Meat</option>
-                                <option value="Tilapia">Tilapia</option>
+                                <option value="Fish">Fish</option>
                                 <option value="Ugali">Ugali (Maize Flour)</option>
                                 <option value="Soda">Soda</option>
                                 <option value="Greens">Greens</option>
                                 <option value="Water">Water</option>
                             </select>
                         </div>
-                        <div>
+                        <div id="invSubCatDiv">
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Sub-Category</label>
-                            <select id="invSubCat" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                            <select id="invSubCat" onchange="renderFishInputs()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 <!-- Populated dynamically based on category -->
                             </select>
                         </div>
-                        <div>
+                        <div id="singleQtyDiv">
                             <label id="invQtyLabel" class="block text-xs font-bold uppercase mb-1 text-slate-400">Quantity (KG)</label>
                             <input type="number" step="0.01" id="invQty" placeholder="e.g. 5.5" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Total Cost (KES)</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Combined Cost (KES)</label>
                             <input type="number" id="invCost" placeholder="0.00" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div id="multiQtyDiv" class="hidden col-span-1 md:col-span-4 grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 border-t border-slate-200 dark:border-slate-700 pt-4">
+                            <!-- Populated for Fish -->
                         </div>
                     </div>
 
@@ -451,7 +454,6 @@
 
             <!-- EXPENSES TAB -->
             <div id="expensesTab" class="tab-section hidden space-y-6">
-                <!-- Keep expense unchanged from your original -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="glass-panel p-4 md:p-6 shadow-md lg:col-span-1 space-y-4">
                         <h3 class="text-lg md:text-xl font-bold text-brand-primary">Record Expense</h3>
@@ -518,7 +520,6 @@
 
             <!-- RECORDS TAB -->
             <div id="recordsTab" class="tab-section hidden space-y-6">
-                <!-- Comprehensive records unchanged -->
                 <div class="glass-panel p-4 md:p-6 shadow-md flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
                     <h3 class="text-lg md:text-xl font-bold text-brand-primary">Comprehensive Records</h3>
                     <div class="flex flex-wrap gap-2 w-full xl:w-auto">
@@ -569,7 +570,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <input type="text" id="menuName" placeholder="Item Name" class="col-span-1 sm:col-span-2 md:col-span-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-brand-primary outline-none">
                             
-                            <select id="menuCategory" onchange="toggleSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
+                            <select id="menuCategory" onchange="toggleMenuSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                                 <option value="MEAT CUTS">Meat Cuts</option>
                                 <option value="TILAPIA VARIATIONS">Tilapia</option>
                                 <option value="MBUTA VARIATIONS">Mbuta</option>
@@ -583,7 +584,6 @@
                                 <option value="DRINKS & WATER">Drinks</option>
                             </select>
                             
-                            <!-- Modified Dropdowns for Meat Types and Cut Sizes -->
                             <div id="meatOptionsContainer" class="col-span-1 sm:col-span-2 flex space-x-2">
                                 <select id="menuSubCategory" class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                                     <option value="beef">Beef</option>
@@ -626,7 +626,6 @@
 
             <!-- USERS TAB -->
             <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <!-- Cashier Logic unchanged -->
                 <div class="glass-panel p-6 shadow-md h-fit">
                     <h3 class="font-bold text-lg md:text-xl mb-4 text-brand-primary">Onboard Cashier</h3>
                     <div class="space-y-4">
@@ -678,7 +677,6 @@
 
     <!-- Modals -->
     <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
-        <!-- Block content -->
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
             <h3 class="text-xl font-bold text-rose-500">Block Account</h3>
             <input type="hidden" id="blockTargetUserId">
@@ -704,7 +702,6 @@
         </div>
     </div>
 
-    <!-- Edit Menu Modal Added -->
     <div id="editMenuModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
             <h3 class="text-xl font-bold text-brand-primary">Edit Menu Item</h3>
@@ -738,6 +735,23 @@
             <div class="flex space-x-3 pt-2">
                 <button onclick="executeDepleteStock()" class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-rose-600 transition">Confirm Depletion</button>
                 <button onclick="closeDepleteModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Audit Modal -->
+    <div id="auditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
+            <h3 class="text-xl font-bold text-brand-primary">Audit Stock / Cycle Count</h3>
+            <p class="text-xs text-slate-500">Adjust active inventory for <span id="auditBatchName" class="font-bold text-slate-800 dark:text-white"></span> without closing the batch.</p>
+            <input type="hidden" id="auditBatchId">
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Actual Amount Currently Remaining</label>
+                <input type="number" step="0.01" id="auditActualQty" placeholder="Counted Qty" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="executeAuditStock()" class="flex-1 bg-brand-primary text-white font-bold py-3 rounded-lg shadow-lg hover:bg-brand-secondary transition">Save Adjustment</button>
+                <button onclick="closeAuditModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
             </div>
         </div>
     </div>
@@ -778,7 +792,7 @@
         let currentTab = 'sales';
         let adminWs;
         
-        const formatKsh = (n) => `KES ${Number(n).toLocaleString()}`;
+        const formatKsh = (n) => `KES ${Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
         document.addEventListener("DOMContentLoaded", () => {
             const today = new Date().toISOString().split('T')[0];
@@ -891,7 +905,7 @@
             loadAllData();
         }
 
-        function toggleSubCategory() {
+        function toggleMenuSubCategory() {
             const cat = document.getElementById('menuCategory').value;
             const isMeat = (cat === 'MEAT CUTS');
             
@@ -914,20 +928,29 @@
             const cat = document.getElementById('invCat').value;
             const sub = document.getElementById('invSubCat');
             const qtyLabel = document.getElementById('invQtyLabel');
+            const singleQtyDiv = document.getElementById('invQty').parentElement;
+            const multiQtyDiv = document.getElementById('multiQtyDiv');
+            const subCatDiv = document.getElementById('invSubCatDiv');
+            
             sub.innerHTML = '';
+            multiQtyDiv.innerHTML = '';
+            multiQtyDiv.classList.add('hidden');
+            singleQtyDiv.classList.remove('hidden');
+            subCatDiv.classList.remove('hidden');
+            document.getElementById('invQty').disabled = false;
             
             if (cat === 'Meat') {
                 sub.innerHTML = '<option value="Beef">Beef</option><option value="Mbuzi">Mbuzi</option><option value="Chicken">Chicken</option><option value="Bone Soup">Bone Soup</option>';
                 qtyLabel.innerText = "Quantity (KG)";
-            } else if (cat === 'Tilapia') {
-                sub.innerHTML = '<option value="Size 3">Size 3 (200-250/=)</option><option value="Size 4">Size 4 (300-350/=)</option><option value="Size 5">Size 5 (400-450/=)</option><option value="Size 6">Size 6 (500/=)</option><option value="Size 7">Size 7 (600+)</option>';
-                qtyLabel.innerText = "Quantity (Pieces)";
+            } else if (cat === 'Fish') {
+                sub.innerHTML = '<option value="Tilapia">Tilapia</option><option value="Mbuta">Mbuta</option>';
+                renderFishInputs();
             } else if (cat === 'Soda') {
                 sub.innerHTML = '<option value="Coke">Coca-Cola</option><option value="Pepsi">Pepsi</option>';
                 qtyLabel.innerText = "Quantity (Crates)";
             } else if (cat === 'Greens') {
                 sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Mchicha">Mchicha</option><option value="Tomatoes">Tomatoes</option>';
-                qtyLabel.innerText = "Quantity (Buckets / KG)";
+                singleQtyDiv.classList.add('hidden');
             } else if (cat === 'Water') {
                 sub.innerHTML = '<option value="Small">Small (500ml)</option><option value="1 Litre">1 Litre</option>';
                 qtyLabel.innerText = "Quantity (Bottles)";
@@ -935,6 +958,27 @@
                 sub.innerHTML = '<option value="Maize Flour">Maize Flour</option>';
                 qtyLabel.innerText = "Quantity (Bales / KG)";
             }
+        }
+
+        function renderFishInputs() {
+            const cat = document.getElementById('invCat').value;
+            if (cat !== 'Fish') return;
+            const sub = document.getElementById('invSubCat').value;
+            
+            document.getElementById('invQty').parentElement.classList.add('hidden');
+            const multi = document.getElementById('multiQtyDiv');
+            multi.classList.remove('hidden');
+
+            let sizes = [];
+            if (sub === 'Tilapia') sizes = ['Size 3', 'Size 4', 'Size 5', 'Size 6', 'Size 7'];
+            if (sub === 'Mbuta') sizes = ['250', '300', '350', '400'];
+
+            multi.innerHTML = sizes.map(s => `
+                <div>
+                    <label class="block text-[10px] font-bold uppercase mb-1 text-slate-400">${s}</label>
+                    <input type="number" step="1" data-size="${s}" placeholder="Qty" class="fish-qty-input w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+            `).join('');
         }
 
         function toggleInvPaymentSplit() {
@@ -995,7 +1039,6 @@
             toggleInvSubCat(); // Initialize inventory form
         }
 
-        // --- NEW INVENTORY JS LOGIC --- //
         async function loadInventory() {
             try {
                 const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/live`, {
@@ -1014,7 +1057,7 @@
                     let unit = "Units";
                     if(b.category === "Meat") unit = "KG";
                     if(b.category === "Soda") unit = "Btls";
-                    if(b.category === "Tilapia") unit = "Pcs";
+                    if(b.category === "Fish") unit = "Pcs";
 
                     let alertBadge = "";
                     if (b.dead_stock) alertBadge += `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 text-[9px] font-bold mr-1">DEAD STOCK</span>`;
@@ -1026,15 +1069,16 @@
                             <div class="font-bold text-slate-800 dark:text-white">${b.sub_category}</div>
                             <div class="text-[10px] text-slate-500">${b.category} • ${b.duration_hrs.toFixed(1)} hrs active</div>
                         </td>
-                        <td class="font-medium">${b.quantity_initial} ${unit}</td>
-                        <td class="font-bold text-brand-primary">${b.sold_qty} ${unit}</td>
-                        <td class="font-black text-emerald-600 text-lg">${b.remaining_qty} ${unit}</td>
+                        <td class="font-medium">${b.quantity_initial.toFixed(2)} ${unit}</td>
+                        <td class="font-bold text-brand-primary">${b.sold_qty.toFixed(2)} ${unit}</td>
+                        <td class="font-black text-emerald-600 text-lg">${b.remaining_qty.toFixed(2)} ${unit}</td>
                         <td>
                             <div class="text-xs">Cost: ${formatKsh(b.cost)}</div>
                             <div class="text-xs font-bold ${roiColor}">Rev: ${formatKsh(b.revenue)}</div>
                         </td>
                         <td>${alertBadge || '<span class="text-emerald-500 text-xs font-bold">HEALTHY</span>'}</td>
-                        <td class="text-right">
+                        <td class="text-right flex space-x-2 justify-end">
+                            <button onclick="openAuditModal('${b.id}', '${b.sub_category}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1.5 rounded transition">Audit</button>
                             <button onclick="openDepleteModal('${b.id}', '${b.sub_category}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1.5 rounded transition">Mark Depleted</button>
                         </td>
                     </tr>`;
@@ -1050,7 +1094,7 @@
                             <div class="text-[10px] text-slate-500">${h.category} • ${dateStr}</div>
                         </td>
                         <td class="text-xs text-slate-600">${h.duration_hrs ? h.duration_hrs.toFixed(1) + ' hrs' : '-'}</td>
-                        <td class="font-bold ${h.declared_lost_qty > 0 ? 'text-rose-500' : 'text-slate-500'}">${h.declared_lost_qty > 0 ? h.declared_lost_qty : 'None'}</td>
+                        <td class="font-bold ${h.declared_lost_qty > 0 ? 'text-rose-500' : 'text-slate-500'}">${h.declared_lost_qty > 0 ? h.declared_lost_qty.toFixed(2) : 'None'}</td>
                         <td class="font-bold ${h.money_lost > 0 ? 'text-rose-500' : 'text-slate-500'}">${formatKsh(h.money_lost)}</td>
                         <td class="text-[10px] max-w-[200px] whitespace-normal text-amber-600">${h.analysis_notes || 'Clean depletion.'}</td>
                     </tr>`;
@@ -1064,7 +1108,6 @@
         async function submitNewStock() {
             const cat = document.getElementById('invCat').value;
             const sub = document.getElementById('invSubCat').value;
-            const qty = parseFloat(document.getElementById('invQty').value);
             const cost = parseFloat(document.getElementById('invCost').value);
             const payment = document.getElementById('invPayment').value;
             const prevDepleted = document.getElementById('invPrevDepleted').checked;
@@ -1073,21 +1116,36 @@
             const cashAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invCashAmt').value) : 0;
             const mpesaAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invMpesaAmt').value) : 0;
 
-            if(isNaN(qty) || isNaN(cost)) {
-                alert("Please enter valid numbers for quantity and cost.");
+            let items = [];
+            
+            if (cat === 'Fish') {
+                document.querySelectorAll('.fish-qty-input').forEach(input => {
+                    let val = parseFloat(input.value);
+                    if (val > 0) items.push({ sub_category: input.getAttribute('data-size'), quantity: val });
+                });
+                if(items.length === 0) return alert("Enter at least one quantity for Fish variants.");
+            } else if (cat === 'Greens') {
+                items.push({ sub_category: sub, quantity: 0 }); // Greens quantity not required
+            } else {
+                const qty = parseFloat(document.getElementById('invQty').value);
+                if(isNaN(qty) || qty <= 0) return alert("Valid quantity required.");
+                items.push({ sub_category: sub, quantity: qty });
+            }
+
+            if (isNaN(cost)) {
+                alert("Please enter a valid combined cost.");
                 return;
             }
 
             const payload = {
                 category: cat,
-                sub_category: sub,
-                quantity: qty,
                 cost: cost,
                 payment_method: payment,
                 cash_amount: cashAmt,
                 mpesa_amount: mpesaAmt,
                 previous_depleted: prevDepleted,
-                previous_remaining: prevRemaining
+                previous_remaining: prevRemaining,
+                items: items
             };
 
             try {
@@ -1102,6 +1160,7 @@
                     document.getElementById('invQty').value = '';
                     document.getElementById('invCost').value = '';
                     document.getElementById('invPrevRemaining').value = '';
+                    document.querySelectorAll('.fish-qty-input').forEach(i => i.value = '');
                     loadInventory();
                 } else {
                     const err = await res.json();
@@ -1137,7 +1196,7 @@
                 if(res.ok) {
                     const data = await res.json();
                     if(data.lost_qty > 0) {
-                        alert(`Stock Depleted. \nWarning: Calculated loss of ${data.lost_qty} units (Est KES ${data.money_lost}).\nSee analysis notes for details.`);
+                        alert(`Stock Depleted. \nWarning: Calculated loss of ${data.lost_qty.toFixed(2)} units (Est KES ${data.money_lost}).\nSee analysis notes for details.`);
                     } else {
                         alert("Stock depleted successfully with no major discrepancies.");
                     }
@@ -1150,7 +1209,43 @@
                 alert("Network error.");
             }
         }
-        // --- END INVENTORY JS LOGIC --- //
+        
+        function openAuditModal(id, name) {
+            document.getElementById('auditBatchId').value = id;
+            document.getElementById('auditBatchName').innerText = name;
+            document.getElementById('auditActualQty').value = "";
+            document.getElementById('auditModal').classList.remove('hidden');
+        }
+
+        function closeAuditModal() {
+            document.getElementById('auditModal').classList.add('hidden');
+        }
+
+        async function executeAuditStock() {
+            const id = document.getElementById('auditBatchId').value;
+            const actualQty = parseFloat(document.getElementById('auditActualQty').value);
+
+            if(isNaN(actualQty) || actualQty < 0) return alert("Please enter a valid count.");
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/audit`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ batch_id: id, actual_remaining_qty: actualQty })
+                });
+
+                if(res.ok) {
+                    alert("Stock audited and adjusted successfully.");
+                    closeAuditModal();
+                    loadInventory();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to audit stock: " + err.detail);
+                }
+            } catch(e) {
+                alert("Network error.");
+            }
+        }
 
         async function loadShiftStatus() {
             try {
@@ -1262,10 +1357,10 @@
             meats.forEach(m => {
                 if(data.meat && data.meat[m]) {
                     const d = data.meat[m];
-                    document.getElementById(`${m}14`).innerText = d['1/4'];
-                    document.getElementById(`${m}12`).innerText = d['1/2'];
-                    document.getElementById(`${m}1`).innerText = d['1kg'];
-                    document.getElementById(`${m}TotKg`).innerText = `${d.total_kg} KG`;
+                    document.getElementById(`${m}14`).innerText = d['1/4'].toFixed(2);
+                    document.getElementById(`${m}12`).innerText = d['1/2'].toFixed(2);
+                    document.getElementById(`${m}1`).innerText = d['1kg'].toFixed(2);
+                    document.getElementById(`${m}TotKg`).innerText = `${d.total_kg.toFixed(2)} KG`;
                     document.getElementById(`${m}Cash`).innerText = formatKsh(d.cash);
                     document.getElementById(`${m}Mpesa`).innerText = formatKsh(d.mpesa);
                 }
@@ -1301,7 +1396,7 @@
                 document.getElementById('greensTableBody').innerHTML = Object.entries(data.greens).map(([name, d]) => `
                     <tr>
                         <td class="capitalize font-medium text-brand-primary">${name}</td>
-                        <td class="text-right">${d.qty}</td>
+                        <td class="text-right">${d.qty.toFixed(2)}</td>
                         <td class="text-right text-emerald-500 font-bold">${formatKsh(d.revenue)}</td>
                     </tr>
                 `).join('');
@@ -1320,7 +1415,7 @@
                 document.getElementById('sidesTableBody').innerHTML = sidesArr.map(item => `
                     <tr>
                         <td class="font-medium text-amber-500">${item.name}</td>
-                        <td class="text-right">${item.d.qty}</td>
+                        <td class="text-right">${item.d.qty.toFixed(2)}</td>
                         <td class="text-right text-emerald-500 font-bold">${formatKsh(item.d.revenue)}</td>
                     </tr>
                 `).join('');
@@ -1328,30 +1423,12 @@
 
             if (data.drinks) {
                 const dr = data.drinks;
-                if(dr.coke) {
-                    document.getElementById('cokeQty').innerText = dr.coke.qty; 
-                    document.getElementById('cokeRev').innerText = formatKsh(dr.coke.rev);
-                }
-                if(dr.pepsi) {
-                    document.getElementById('pepsiQty').innerText = dr.pepsi.qty; 
-                    document.getElementById('pepsiRev').innerText = formatKsh(dr.pepsi.rev);
-                }
-                if(dr.water) {
-                    document.getElementById('waterQty').innerText = dr.water.qty; 
-                    document.getElementById('waterRev').innerText = formatKsh(dr.water.rev);
-                }
-                if(dr.tea) {
-                    document.getElementById('teaQty').innerText = dr.tea.qty;
-                    document.getElementById('teaRev').innerText = formatKsh(dr.tea.rev);
-                }
-                if(dr.ugali) {
-                    document.getElementById('ugaliQty').innerText = dr.ugali.qty;
-                    document.getElementById('ugaliRev').innerText = formatKsh(dr.ugali.rev);
-                }
-                if(dr.soup) {
-                    document.getElementById('soupQty').innerText = dr.soup.qty;
-                    document.getElementById('soupRev').innerText = formatKsh(dr.soup.rev);
-                }
+                if(dr.coke) { document.getElementById('cokeQty').innerText = dr.coke.qty.toFixed(2); document.getElementById('cokeRev').innerText = formatKsh(dr.coke.rev); }
+                if(dr.pepsi) { document.getElementById('pepsiQty').innerText = dr.pepsi.qty.toFixed(2); document.getElementById('pepsiRev').innerText = formatKsh(dr.pepsi.rev); }
+                if(dr.water) { document.getElementById('waterQty').innerText = dr.water.qty.toFixed(2); document.getElementById('waterRev').innerText = formatKsh(dr.water.rev); }
+                if(dr.tea) { document.getElementById('teaQty').innerText = dr.tea.qty.toFixed(2); document.getElementById('teaRev').innerText = formatKsh(dr.tea.rev); }
+                if(dr.ugali) { document.getElementById('ugaliQty').innerText = dr.ugali.qty.toFixed(2); document.getElementById('ugaliRev').innerText = formatKsh(dr.ugali.rev); }
+                if(dr.soup) { document.getElementById('soupQty').innerText = dr.soup.qty.toFixed(2); document.getElementById('soupRev').innerText = formatKsh(dr.soup.rev); }
             }
         }
 
