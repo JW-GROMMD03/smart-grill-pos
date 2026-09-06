@@ -25,12 +25,12 @@ serializer = URLSafeTimedSerializer(settings.JWT_SECRET)
 # ==========================================
 
 class ShiftPermitRequest(BaseModel):
-    permit_type: str  # "EXTENSION", "EARLY_START", "OVERLAP"
-    permitted_shift: str  # "DAY", "NIGHT"
-    action: str  # "GRANT", "REVOKE"
+    permit_type: str  
+    permitted_shift: str  
+    action: str  
 
 class ShiftForceRequest(BaseModel):
-    shift: str  # "DAY", "NIGHT", "AUTO"
+    shift: str  
 
 @router.get("/shift/status")
 async def get_shift_status(admin=Depends(SecurityEngine.verify_token)):
@@ -171,7 +171,6 @@ async def update_admin_profile(data: ProfileUpdate, admin=Depends(SecurityEngine
         try:
             res = supabase.table("cashiers").update(updates).eq("id", admin_id).execute()
             
-            # Check if Supabase actually updated any row
             if not res.data:
                 raise HTTPException(status_code=400, detail="Profile update failed: User record not found or update blocked by database policies.")
                 
@@ -212,7 +211,6 @@ async def terminal_initiate_reset(payload: VaultResetInit, request: Request):
     token = serializer.dumps(payload.admin_email, salt="vault-reset-salt")
     reset_link = f"https://smartgrillpos.com/master-vault.html?token={token}"
 
-    # Dispatch email directly via SMTP
     msg = EmailMessage()
     msg.set_content(f"Level 4 Vault Reset requested from Terminal.\n\nAccess your secure portal to answer validation questions:\n{reset_link}\n\nLink expires in 15 minutes.")
     msg['Subject'] = "CRITICAL: Admin Vault Password Reset Request"
@@ -343,7 +341,6 @@ async def update_menu_item(
     request: Request,
     admin=Depends(SecurityEngine.verify_token)
 ):
-    """Enhanced feature: Updates menu item properties (price, name, category, or sub_category) dynamically."""
     update_data = {}
     if payload.name is not None:
         update_data["name"] = payload.name
@@ -753,9 +750,17 @@ async def get_deep_analytics(
             "kachumbari": {"qty": 0.0, "revenue": 0.0},
             "wet_fry": {"qty": 0.0, "revenue": 0.0},
             "chips_regular": {"qty": 0.0, "revenue": 0.0},
-            "chips_masala": {"qty": 0.0, "revenue": 0.0}
+            "chips_masala": {"qty": 0.0, "revenue": 0.0},
+            "mukimo": {"qty": 0.0, "revenue": 0.0}
         }
-        drinks = {"pepsi": {"qty": 0.0, "rev": 0.0}, "coke": {"qty": 0.0, "rev": 0.0}, "water": {"qty": 0.0, "rev": 0.0}}
+        drinks = {
+            "pepsi": {"qty": 0.0, "rev": 0.0}, 
+            "coke": {"qty": 0.0, "rev": 0.0}, 
+            "water": {"qty": 0.0, "rev": 0.0},
+            "tea": {"qty": 0.0, "rev": 0.0},
+            "ugali": {"qty": 0.0, "rev": 0.0},
+            "soup": {"qty": 0.0, "rev": 0.0}
+        }
 
         for item in items:
             name = str(item.get("item_name") or "").lower()
@@ -842,6 +847,9 @@ async def get_deep_analytics(
                 else:
                     sides["chips_regular"]["qty"] += qty
                     sides["chips_regular"]["revenue"] += total
+            elif "mukimo" in name or "mataha" in name:
+                sides["mukimo"]["qty"] += qty
+                sides["mukimo"]["revenue"] += total
 
             if "pepsi" in name:
                 drinks["pepsi"]["qty"] += qty
@@ -852,6 +860,15 @@ async def get_deep_analytics(
             elif "water" in name:
                 drinks["water"]["qty"] += qty
                 drinks["water"]["rev"] += total
+            elif "tea" in name:
+                drinks["tea"]["qty"] += qty
+                drinks["tea"]["rev"] += total
+            elif "ugali" in name:
+                drinks["ugali"]["qty"] += qty
+                drinks["ugali"]["rev"] += total
+            elif "soup" in name:
+                drinks["soup"]["qty"] += qty
+                drinks["soup"]["rev"] += total
 
         for m_key in meat:
             meat[m_key]["total_kg"] = float(meat[m_key]["total_kg"])

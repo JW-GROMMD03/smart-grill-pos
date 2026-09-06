@@ -1,6 +1,5 @@
 const API_POS = '/api/v1/pos';
 
-// State Persistence via LocalStorage
 let cart = JSON.parse(localStorage.getItem('sg_cart')) || [];
 let holdQueue = JSON.parse(localStorage.getItem('sg_holds')) || [];
 let deletePollInterval = null;
@@ -13,9 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   connectCashierSocket();
 });
 
-// ==========================================
-// REAL-TIME SESSION MANAGEMENT
-// ==========================================
 function connectCashierSocket() {
     const token = localStorage.getItem('sg_token');
     const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -33,11 +29,9 @@ function connectCashierSocket() {
             document.getElementById('shiftLockoutOverlay').classList.remove('hidden');
             document.getElementById('shiftLockoutOverlay').classList.add('flex');
             
-            // Purge credentials immediately
             localStorage.removeItem('sg_token');
             localStorage.removeItem('sg_user');
             
-            // Redirect after 6 seconds to ensure the cashier reads the message
             setTimeout(() => { window.location.replace('/index.html'); }, 6000);
         } else if (data.action === 'menu_refresh') {
             loadDynamicMenu();
@@ -90,7 +84,6 @@ async function loadDynamicMenu() {
     
     const items = await res.json();
     
-    // Graceful handling of empty menu state without throwing a console error
     if (!items || !Array.isArray(items) || items.length === 0) {
         if(container) {
           container.innerHTML = `
@@ -124,19 +117,23 @@ function renderMenuGrid(items) {
   const container = document.getElementById('dynamicMenuGrid');
   if(!container) return;
 
-  // Force the POS to ignore disabled items, protecting it from Admin cache pollution
   items = items.filter(i => i.is_active === true);
 
   const getCat = (cat) => items.filter(i => i.category === cat).sort((a,b) => a.price - b.price);
   const tilapia = getCat('TILAPIA VARIATIONS');
+  const mbuta = getCat('MBUTA VARIATIONS');
   const wetfry = getCat('WETFRY');
   const greens = getCat('GREENS & KACHUMBARI');
   const drinks = getCat('DRINKS & WATER');
   const chips = getCat('CHIPS & PACKAGING');
+  const mukimo = getCat('MUKIMO / MATAHA');
+  const ugali = getCat('UGALI');
+  const tea = getCat('TEA');
+  const others = getCat('OTHERS');
   
-  const mbuzi = items.filter(i => i.category === 'MEAT CUTS' && i.name.includes('Mbuzi')).sort((a,b) => a.price - b.price);
-  const beef = items.filter(i => i.category === 'MEAT CUTS' && i.name.includes('Beef')).sort((a,b) => a.price - b.price);
-  const chicken = items.filter(i => i.category === 'MEAT CUTS' && i.name.includes('Chicken')).sort((a,b) => a.price - b.price);
+  const mbuzi = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('mbuzi')).sort((a,b) => a.price - b.price);
+  const beef = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('beef')).sort((a,b) => a.price - b.price);
+  const chicken = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('chicken')).sort((a,b) => a.price - b.price);
 
   const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900/60 hover:bg-slate-800 border border-slate-700/50 rounded-lg p-2.5 text-left flex flex-col justify-between shadow-sm transition"><span class="text-slate-200 text-[11px] font-bold">${i.name}</span><span class="text-amber-400 text-xs font-black mt-1">${i.price}/=</span></button>`;
   const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded p-1.5 text-center transition"><span class="text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
@@ -145,12 +142,19 @@ function renderMenuGrid(items) {
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-         ${tilapia.map(blockBtn).join('')}
+          ${tilapia.map(blockBtn).join('')}
        </div>
     </div>
 
     <div class="mb-5">
-       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS</h3>
+       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> MBUTA VARIATIONS</h3>
+       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          ${mbuta.map(blockBtn).join('')}
+       </div>
+    </div>
+
+    <div class="mb-5">
+       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
              <p class="text-slate-200 text-xs font-bold mb-2">Mbuzi</p>
@@ -177,6 +181,18 @@ function renderMenuGrid(items) {
            <div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div>
         </div>
         <div>
+           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥔</span> MUKIMO / MATAHA</h3>
+           <div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div>
+        </div>
+        <div>
+           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍛</span> UGALI & TEA</h3>
+           <div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div>
+        </div>
+        <div>
+           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥣</span> OTHERS (SOUP, ETC.)</h3>
+           <div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div>
+        </div>
+        <div>
            <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥤</span> DRINKS & WATER</h3>
            <div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div>
         </div>
@@ -192,7 +208,12 @@ function triggerQuantityModal(name, category, price) {
   pendingItem = { name, category, price };
   
   let displayName = name;
-  if (category === 'MEAT CUTS') displayName = `${name} (${price}/=)`;
+  if (category === 'MEAT CUTS') {
+      let kgLabel = "1 KG";
+      if (price <= 275 || (price === 200)) kgLabel = "1/4 KG";
+      else if (price <= 600 || price === 350) kgLabel = "1/2 KG";
+      displayName = `${name} - ${kgLabel} (${price}/=)`;
+  }
   
   document.getElementById('qtyItemName').innerText = displayName;
   document.getElementById('qtySelect').value = "1";
@@ -210,7 +231,10 @@ function confirmQtyAdd() {
 function addToCart(name, category, price, qty = 1) {
   let displayName = name;
   if(category === 'MEAT CUTS' && !name.includes('(')) {
-    displayName = `${name} (${price}/=)`; 
+    let kgLabel = "1 KG";
+    if (price <= 275) kgLabel = "1/4 KG";
+    else if (price <= 600) kgLabel = "1/2 KG";
+    displayName = `${name} [${kgLabel}] (${price}/=)`; 
   }
 
   const existing = cart.find(i => i.item_name === displayName && i.unit_price === price);

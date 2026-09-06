@@ -66,7 +66,6 @@
     
     <header class="h-[72px] bg-white dark:bg-brand-card border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
         <div class="flex items-center space-x-3 md:space-x-4">
-            <!-- Mobile Menu Toggle Button -->
             <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
@@ -79,7 +78,6 @@
             </div>
         </div>
         <div class="flex items-center space-x-4 md:space-x-6">
-            <!-- Hidden on small screens to save space -->
             <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 shadow-inner">
                 <span class="text-xs font-bold text-slate-500 uppercase mr-2">Target Date:</span>
                 <input type="date" id="dateFilter" onchange="syncDateFilters('desktop')" class="bg-transparent text-sm font-medium text-slate-700 dark:text-white focus:outline-none">
@@ -95,11 +93,7 @@
     </header>
 
     <div class="flex flex-1 overflow-hidden relative">
-        
-        <!-- Sidebar updated with absolute positioning and transforms for mobile -->
         <aside id="sidebar" class="absolute md:relative z-40 w-64 h-full bg-white dark:bg-brand-card border-r border-slate-200 dark:border-slate-800 p-4 space-y-2 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
-            
-            <!-- Mobile Date Filter (Visible only in mobile sidebar) -->
             <div class="md:hidden mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Target Date</label>
                 <input type="date" id="mobileDateFilter" onchange="syncDateFilters('mobile')" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-700 dark:text-white outline-none">
@@ -114,14 +108,12 @@
             <button onclick="switchTab('users')" id="nav-users" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">User Management</button>
             <button onclick="switchTab('scanner')" id="nav-scanner" class="tab-btn w-full text-left py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-slate-600 dark:text-slate-400 transition">Smart Deletion</button>
             
-            <!-- Mobile Log Out -->
             <button onclick="logout()" class="md:hidden w-full text-left py-3 px-4 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 font-semibold text-rose-500 transition mt-4">Log Out Securely</button>
         </aside>
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 bg-slate-50 dark:bg-brand-dark w-full">
             
             <div id="salesTab" class="tab-section space-y-6">
-
                 <div class="glass-panel p-4 md:p-6 border-l-4 border-l-brand-primary shadow-lg space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
@@ -143,18 +135,10 @@
                     </div>
 
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                        <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
-                            🌅 Start Day Early
-                        </button>
-                        <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
-                            ⏳ Day Extension
-                        </button>
-                        <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">
-                            🔄 Shift Overlap
-                        </button>
-                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl transition text-center">
-                            ⚙️ Reset to Auto
-                        </button>
+                        <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">🌅 Start Day Early</button>
+                        <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">⏳ Day Extension</button>
+                        <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">🔄 Shift Overlap</button>
+                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl transition text-center">⚙️ Reset to Auto</button>
                     </div>
                 </div>
                 
@@ -203,7 +187,6 @@
             </div>
 
             <div id="analyticsTab" class="tab-section hidden space-y-8">
-                
                 <div>
                     <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-brand-accent rounded mr-3"></span> Meat Diagnostics</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -259,10 +242,10 @@
                 </div>
 
                 <div>
-                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-blue-500 rounded mr-3"></span> Fish Revenue</h2>
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 flex items-center text-slate-800 dark:text-white"><span class="w-2 h-6 md:h-8 bg-blue-500 rounded mr-3"></span> Fish & Mbuta Revenue</h2>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="lg:col-span-2 glass-panel p-4 md:p-6 shadow-md">
-                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point</h3>
+                            <h3 class="font-bold text-xs md:text-sm uppercase text-slate-500 mb-4">Amount Sold vs. Price Point (Tilapia & Mbuta)</h3>
                             <div class="relative w-full h-48 md:h-64">
                                 <canvas id="fishChart"></canvas>
                             </div>
@@ -291,7 +274,7 @@
                         </div>
                     </div>
                     <div class="glass-panel overflow-hidden shadow-md">
-                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-amber-500">Sides</h3></div>
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-amber-500">Sides & Mukimo</h3></div>
                         <div class="overflow-x-auto">
                             <table class="w-full data-table">
                                 <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
@@ -300,20 +283,22 @@
                         </div>
                     </div>
                     <div class="glass-panel overflow-hidden shadow-md">
-                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-rose-500">Beverages</h3></div>
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"><h3 class="font-bold text-base text-rose-500">Beverages, Tea, Ugali & Others</h3></div>
                         <div class="overflow-x-auto">
                             <table class="w-full data-table">
                                 <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Revenue</th></tr></thead>
-                                <tbody>
+                                <tbody id="othersTableBody">
                                     <tr><td class="font-bold text-red-500">Coca-Cola</td><td class="text-right" id="cokeQty">0</td><td class="text-right font-bold text-emerald-500" id="cokeRev">0</td></tr>
                                     <tr><td class="font-bold text-blue-500">Pepsi</td><td class="text-right" id="pepsiQty">0</td><td class="text-right font-bold text-emerald-500" id="pepsiRev">0</td></tr>
                                     <tr><td class="font-bold text-cyan-500">Water</td><td class="text-right" id="waterQty">0</td><td class="text-right font-bold text-emerald-500" id="waterRev">0</td></tr>
+                                    <tr><td class="font-bold text-amber-600">Tea</td><td class="text-right" id="teaQty">0</td><td class="text-right font-bold text-emerald-500" id="teaRev">0</td></tr>
+                                    <tr><td class="font-bold text-yellow-600">Ugali</td><td class="text-right" id="ugaliQty">0</td><td class="text-right font-bold text-emerald-500" id="ugaliRev">0</td></tr>
+                                    <tr><td class="font-bold text-stone-500">Soup</td><td class="text-right" id="soupQty">0</td><td class="text-right font-bold text-emerald-500" id="soupRev">0</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <div id="expensesTab" class="tab-section hidden space-y-6">
@@ -434,9 +419,14 @@
                             <select id="menuCategory" onchange="toggleSubCategory()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-3 py-2 text-sm focus:ring-2 outline-none">
                                 <option value="MEAT CUTS">Meat Cuts</option>
                                 <option value="TILAPIA VARIATIONS">Tilapia</option>
+                                <option value="MBUTA VARIATIONS">Mbuta</option>
                                 <option value="WETFRY">Wet Fry</option>
                                 <option value="GREENS & KACHUMBARI">Greens</option>
-                                <option value="CHIPS & PACKAGING">Chips</option>
+                                <option value="CHIPS & PACKAGING">Chips & Sides</option>
+                                <option value="MUKIMO / MATAHA">Mukimo / Mataha</option>
+                                <option value="UGALI">Ugali</option>
+                                <option value="TEA">Tea</option>
+                                <option value="OTHERS">Others (Soup, etc.)</option>
                                 <option value="DRINKS & WATER">Drinks</option>
                             </select>
                             
@@ -519,7 +509,6 @@
         </main>
     </div>
 
-    <!-- Modals -->
     <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
             <h3 class="text-xl font-bold text-rose-500">Block Account</h3>
@@ -602,12 +591,10 @@
             connectAdminSocket();
         });
 
-        // Mobile responsiveness toggle
         function toggleMobileMenu() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
         }
 
-        // Sync inputs between mobile and desktop date filters
         function syncDateFilters(source) {
             const val = source === 'desktop' 
                 ? document.getElementById('dateFilter').value 
@@ -673,7 +660,6 @@
             document.getElementById(`${tab}Tab`).classList.remove('hidden');
             document.getElementById(`nav-${tab}`).className = "tab-btn w-full text-left py-3 px-4 rounded-xl font-semibold bg-brand-primary/10 text-brand-primary transition";
 
-            // Hide sidebar on mobile after clicking a link
             if(window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');
             }
@@ -891,7 +877,8 @@
                     {name: 'Chips', d: s.chips_regular}, 
                     {name: 'Masala', d: s.chips_masala},
                     {name: 'Kachumbari', d: s.kachumbari}, 
-                    {name: 'Wet Fry', d: s.wet_fry}
+                    {name: 'Wet Fry', d: s.wet_fry},
+                    {name: 'Mukimo / Mataha', d: s.mukimo}
                 ].filter(item => item.d);
                 
                 document.getElementById('sidesTableBody').innerHTML = sidesArr.map(item => `
@@ -916,6 +903,18 @@
                 if(dr.water) {
                     document.getElementById('waterQty').innerText = dr.water.qty; 
                     document.getElementById('waterRev').innerText = formatKsh(dr.water.rev);
+                }
+                if(dr.tea) {
+                    document.getElementById('teaQty').innerText = dr.tea.qty;
+                    document.getElementById('teaRev').innerText = formatKsh(dr.tea.rev);
+                }
+                if(dr.ugali) {
+                    document.getElementById('ugaliQty').innerText = dr.ugali.qty;
+                    document.getElementById('ugaliRev').innerText = formatKsh(dr.ugali.rev);
+                }
+                if(dr.soup) {
+                    document.getElementById('soupQty').innerText = dr.soup.qty;
+                    document.getElementById('soupRev').innerText = formatKsh(dr.soup.rev);
                 }
             }
         }
