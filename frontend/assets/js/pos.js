@@ -134,6 +134,7 @@ function renderMenuGrid(items) {
   const mbuzi = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('mbuzi')).sort((a,b) => a.price - b.price);
   const beef = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('beef')).sort((a,b) => a.price - b.price);
   const chicken = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('chicken')).sort((a,b) => a.price - b.price);
+  const boneSoup = items.filter(i => i.category === 'MEAT CUTS' && (i.name.toLowerCase().includes('bone soup') || i.sub_category === 'bone_soup')).sort((a,b) => a.price - b.price);
 
   const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900/60 hover:bg-slate-800 border border-slate-700/50 rounded-lg p-2.5 text-left flex flex-col justify-between shadow-sm transition"><span class="text-slate-200 text-[11px] font-bold">${i.name}</span><span class="text-amber-400 text-xs font-black mt-1">${i.price}/=</span></button>`;
   const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded p-1.5 text-center transition"><span class="text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
@@ -155,7 +156,7 @@ function renderMenuGrid(items) {
 
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
-       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+       <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
              <p class="text-slate-200 text-xs font-bold mb-2">Mbuzi</p>
              <div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div>
@@ -167,6 +168,10 @@ function renderMenuGrid(items) {
           <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
              <p class="text-slate-200 text-xs font-bold mb-2">Chicken</p>
              <div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div>
+          </div>
+          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
+             <p class="text-slate-200 text-xs font-bold mb-2">Bone Soup</p>
+             <div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div>
           </div>
        </div>
     </div>
