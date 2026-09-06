@@ -745,7 +745,6 @@ async def get_deep_analytics(
             "chicken": {"1/4": 0.0, "1/2": 0.0, "1kg": 0.0, "total_kg": 0.0, "revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
         }
         
-        # Split Fish into Tilapia and Mbuta
         tilapia = {"prices": {}, "total_revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
         mbuta = {"prices": {}, "total_revenue": 0.0, "cash": 0.0, "mpesa": 0.0}
         
@@ -822,7 +821,6 @@ async def get_deep_analytics(
                 meat[target]["cash"] += item_cash
                 meat[target]["mpesa"] += item_mpesa
 
-            # Tilapia logic separated
             elif "tilapia" in cat or "tilapia" in name:
                 price = str(item.get("unit_price") or unit_price)
                 if price not in tilapia["prices"]:
@@ -833,7 +831,6 @@ async def get_deep_analytics(
                 tilapia["cash"] += item_cash
                 tilapia["mpesa"] += item_mpesa
 
-            # Mbuta logic separated
             elif "mbuta" in cat or "mbuta" in name:
                 price = str(item.get("unit_price") or unit_price)
                 if price not in mbuta["prices"]:
@@ -892,7 +889,6 @@ async def get_deep_analytics(
             meat[m_key]["cash"] = round(float(meat[m_key]["cash"]), 2)
             meat[m_key]["mpesa"] = round(float(meat[m_key]["mpesa"]), 2)
 
-        # Output payload updated
         payload = {
             "meat": meat,
             "tilapia": tilapia,
@@ -1010,3 +1006,271 @@ async def authorize_deletion(payload: DeletionAuth, request: Request, admin=Depe
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=f"Authorization execution failed: {str(e)}")
+
+# ==========================================
+# INVENTORY DYNAMIC CALCULATION ENGINE
+# ==========================================
+
+class InventoryBatchCreate(BaseModel):
+    category: str
+    sub_category: str
+    quantity: float
+    cost: float
+    payment_method: str
+    cash_amount: float = 0.0
+    mpesa_amount: float = 0.0
+    previous_depleted: bool = True
+    previous_remaining: float = 0.0
+
+class InventoryDeplete(BaseModel):
+    batch_id: str
+    actual_remaining_qty: float = 0.0
+
+@router.post("/inventory/batch")
+async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, admin=Depends(SecurityEngine.verify_token)):
+    admin_id = admin.get("sub")
+    
+    # 1. Normalize Category Tracking Logic (e.g. 1 Crate = 24 bottles)
+    calc_qty = payload.quantity
+    if payload.category == "Soda":
+        calc_qty = payload.quantity * 24
+
+    # 2. Handle Carry Overs if previous is not depleted
+    carried_over_id = None
+    if not payload.previous_depleted and payload.previous_remaining > 0:
+        # Mark old active as depleted, transfer remaining
+        res = supabase.table("inventory_batches").select("id").eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", payload.sub_category).execute()
+        if res.data:
+            old_id = res.data[0]["id"]
+            supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat(), "analysis_notes": "Carried over into new stock."}).eq("id", old_id).execute()
+            carried_over_id = old_id
+            calc_qty += payload.previous_remaining
+    else:
+        # Just close the old one if they said it was depleted
+        supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat()}).eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", payload.sub_category).execute()
+
+    # 3. Create the new Inventory Batch
+    batch_id = str(uuid.uuid4())
+    batch_data = {
+        "id": batch_id,
+        "category": payload.category,
+        "sub_category": payload.sub_category,
+        "quantity_initial": calc_qty,
+        "cost": payload.cost,
+        "payment_method": payload.payment_method.upper(),
+        "status": "ACTIVE",
+        "carried_over_from": carried_over_id,
+        "recorded_by": admin_id
+    }
+    
+    try:
+        supabase.table("inventory_batches").insert(batch_data).execute()
+        
+        # 4. Automatically Log as an Expense using existing tracking structure
+        desc = f"Stock Purchase: {payload.sub_category} ({payload.category})"
+        _, shift_date = ShiftEngine.calculate_current_shift()
+        
+        expense_payload = {
+            "description": desc,
+            "amount": payload.cost,
+            "payment_type": payload.payment_method.upper(),
+            "cash_amount": payload.cash_amount if payload.payment_method.upper() == 'PARTIAL' else (payload.cost if payload.payment_method.upper() == 'CASH' else 0.0),
+            "mpesa_amount": payload.mpesa_amount if payload.payment_method.upper() == 'PARTIAL' else (payload.cost if payload.payment_method.upper() == 'MPESA' else 0.0),
+            "recorded_by": admin_id,
+            "business_date": shift_date,
+            "shift": "Day" 
+        }
+        supabase.table("expenses").insert(expense_payload).execute()
+        
+        if hasattr(request.app.state, 'sockets'):
+            await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
+            
+        return {"status": "success", "message": "Batch added and expense logged successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add inventory batch: {str(e)}")
+
+@router.get("/inventory/live")
+async def get_live_inventory(admin=Depends(SecurityEngine.verify_token)):
+    try:
+        res = supabase.table("inventory_batches").select("*").eq("status", "ACTIVE").order("created_at", desc=True).execute()
+        batches = res.data or []
+        
+        active_response = []
+        for b in batches:
+            start_time = b["created_at"]
+            items_res = supabase.table("sale_items").select("*").gte("created_at", start_time).execute()
+            items = items_res.data or []
+            
+            sold_qty = 0.0
+            revenue = 0.0
+            
+            for i in items:
+                name = str(i.get("item_name") or "").lower()
+                cat = str(i.get("category") or "").lower()
+                qty = float(i.get("quantity") or 0)
+                total = float(i.get("total") or i.get("subtotal") or 0)
+                u_price = float(i.get("unit_price") or (total/qty if qty > 0 else 0))
+                
+                # Dynamic Mapping based on Category logic
+                if b["category"] == "Meat":
+                    target_sub = b["sub_category"].lower()
+                    if (cat in ["meat cuts", "meat"] or target_sub in name) and target_sub in name:
+                        if target_sub in ["beef", "chicken", "bone soup"]:
+                            if u_price <= 275: sold_qty += (0.25 * qty)
+                            elif u_price <= 600: sold_qty += (0.5 * qty)
+                            else: sold_qty += (1.0 * qty)
+                        elif target_sub == "mbuzi":
+                            if u_price <= 350: sold_qty += (0.25 * qty)
+                            elif u_price <= 750: sold_qty += (0.5 * qty)
+                            else: sold_qty += (1.0 * qty)
+                        revenue += total
+
+                elif b["category"] == "Tilapia":
+                    if "tilapia" in cat or "tilapia" in name:
+                        # Map Price to Size Bracket
+                        mapped_size = "Size 7"
+                        if u_price <= 275: mapped_size = "Size 3"
+                        elif u_price <= 350: mapped_size = "Size 4"
+                        elif u_price <= 450: mapped_size = "Size 5"
+                        elif u_price <= 550: mapped_size = "Size 6"
+                        
+                        if b["sub_category"] == mapped_size:
+                            sold_qty += qty
+                            revenue += total
+                            
+                elif b["category"] == "Ugali":
+                    if "ugali" in name:
+                        sold_qty += qty
+                        revenue += total
+                        
+                elif b["category"] == "Soda":
+                    target = b["sub_category"].lower()
+                    if target in name:
+                        sold_qty += qty
+                        revenue += total
+                        
+                elif b["category"] == "Greens":
+                    target = b["sub_category"].lower()
+                    if target in name or (target == "kales" and "sukuma" in name):
+                        sold_qty += qty
+                        revenue += total
+                        
+                elif b["category"] == "Water":
+                    if "water" in name:
+                        if b["sub_category"] == "Small" and u_price < 100:
+                            sold_qty += qty
+                            revenue += total
+                        elif b["sub_category"] == "1 Litre" and u_price >= 100:
+                            sold_qty += qty
+                            revenue += total
+
+            time_diff = datetime.now(timezone.utc) - datetime.fromisoformat(b["created_at"].replace('Z', '+00:00'))
+            duration_hrs = time_diff.total_seconds() / 3600
+
+            active_response.append({
+                "id": b["id"],
+                "category": b["category"],
+                "sub_category": b["sub_category"],
+                "quantity_initial": b["quantity_initial"],
+                "cost": b["cost"],
+                "sold_qty": round(sold_qty, 2),
+                "remaining_qty": round(b["quantity_initial"] - sold_qty, 2),
+                "revenue": revenue,
+                "duration_hrs": duration_hrs,
+                "dead_stock": duration_hrs > 48 and sold_qty < (b["quantity_initial"] * 0.1),
+                "low_stock": (b["quantity_initial"] - sold_qty) <= (b["quantity_initial"] * 0.1)
+            })
+            
+        hist_res = supabase.table("inventory_batches").select("*").eq("status", "DEPLETED").order("depleted_at", desc=True).limit(50).execute()
+        history = hist_res.data or []
+        for h in history:
+            if h.get("depleted_at") and h.get("created_at"):
+                time_diff = datetime.fromisoformat(h["depleted_at"].replace('Z', '+00:00')) - datetime.fromisoformat(h["created_at"].replace('Z', '+00:00'))
+                h["duration_hrs"] = time_diff.total_seconds() / 3600
+            else:
+                h["duration_hrs"] = 0
+
+        return {"status": "success", "active": active_response, "history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load inventory: {str(e)}")
+
+@router.post("/inventory/deplete")
+async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(SecurityEngine.verify_token)):
+    try:
+        # Fetch exact sold_qty up to this moment (using the exact same logic as get_live)
+        res = supabase.table("inventory_batches").select("*").eq("id", payload.batch_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Batch not found")
+        
+        b = res.data[0]
+        items_res = supabase.table("sale_items").select("*").gte("created_at", b["created_at"]).execute()
+        items = items_res.data or []
+        
+        sold_qty = 0.0
+        revenue = 0.0
+        # Re-run category logic to find exact sold amount
+        for i in items:
+            name = str(i.get("item_name") or "").lower()
+            cat = str(i.get("category") or "").lower()
+            qty = float(i.get("quantity") or 0)
+            total = float(i.get("total") or i.get("subtotal") or 0)
+            u_price = float(i.get("unit_price") or (total/qty if qty > 0 else 0))
+            
+            if b["category"] == "Meat":
+                target_sub = b["sub_category"].lower()
+                if (cat in ["meat cuts", "meat"] or target_sub in name) and target_sub in name:
+                    if target_sub in ["beef", "chicken", "bone soup"]:
+                        if u_price <= 275: sold_qty += (0.25 * qty)
+                        elif u_price <= 600: sold_qty += (0.5 * qty)
+                        else: sold_qty += (1.0 * qty)
+                    elif target_sub == "mbuzi":
+                        if u_price <= 350: sold_qty += (0.25 * qty)
+                        elif u_price <= 750: sold_qty += (0.5 * qty)
+                        else: sold_qty += (1.0 * qty)
+                    revenue += total
+            elif b["category"] == "Tilapia":
+                if "tilapia" in cat or "tilapia" in name:
+                    mapped_size = "Size 7"
+                    if u_price <= 275: mapped_size = "Size 3"
+                    elif u_price <= 350: mapped_size = "Size 4"
+                    elif u_price <= 450: mapped_size = "Size 5"
+                    elif u_price <= 550: mapped_size = "Size 6"
+                    if b["sub_category"] == mapped_size:
+                        sold_qty += qty
+                        revenue += total
+            elif b["category"] == "Ugali" and "ugali" in name: sold_qty += qty; revenue += total
+            elif b["category"] == "Soda" and b["sub_category"].lower() in name: sold_qty += qty; revenue += total
+            elif b["category"] == "Greens":
+                target = b["sub_category"].lower()
+                if target in name or (target == "kales" and "sukuma" in name): sold_qty += qty; revenue += total
+            elif b["category"] == "Water" and "water" in name:
+                if b["sub_category"] == "Small" and u_price < 100: sold_qty += qty; revenue += total
+                elif b["sub_category"] == "1 Litre" and u_price >= 100: sold_qty += qty; revenue += total
+
+        expected_remaining = b["quantity_initial"] - sold_qty
+        lost_qty = round(expected_remaining - payload.actual_remaining_qty, 2)
+        
+        avg_price = revenue / sold_qty if sold_qty > 0 else (b["cost"] / b["quantity_initial"])
+        money_lost = round(lost_qty * avg_price, 2) if lost_qty > 0 else 0.0
+        
+        notes = f"Depleted clean."
+        if lost_qty > 0:
+            notes = f"Discrepancy: Expected {expected_remaining}, Admin Declared {payload.actual_remaining_qty}."
+            if b["category"] == "Tilapia":
+                notes += " Possible size mixing or discounted selling occurred."
+        elif lost_qty < 0:
+            notes = f"Warning: Oversold by {abs(lost_qty)}. Indicates item was sold under the wrong category/price point."
+            lost_qty = 0 # reset negative lost
+            money_lost = 0
+
+        supabase.table("inventory_batches").update({
+            "status": "DEPLETED",
+            "depleted_at": datetime.now(timezone.utc).isoformat(),
+            "declared_lost_qty": lost_qty,
+            "money_lost": money_lost,
+            "analysis_notes": notes
+        }).eq("id", payload.batch_id).execute()
+
+        return {"status": "success", "lost_qty": lost_qty, "money_lost": money_lost}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to deplete batch: {str(e)}")
