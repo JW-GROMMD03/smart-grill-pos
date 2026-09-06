@@ -1151,7 +1151,10 @@ async def get_live_inventory(admin=Depends(SecurityEngine.verify_token)):
                         
                 elif b["category"] == "Greens":
                     target = b["sub_category"].lower()
-                    if target in name or (target == "kales" and "sukuma" in name):
+                    if target == "tomatoes":
+                        if "kachumbari" in name or "wet fry" in name or "wetfry" in name:
+                            revenue += total
+                    elif target in name or (target == "kales" and "sukuma" in name):
                         sold_qty += qty
                         revenue += total
                         
@@ -1242,7 +1245,11 @@ async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(Secur
             elif b["category"] == "Soda" and b["sub_category"].lower() in name: sold_qty += qty; revenue += total
             elif b["category"] == "Greens":
                 target = b["sub_category"].lower()
-                if target in name or (target == "kales" and "sukuma" in name): sold_qty += qty; revenue += total
+                if target == "tomatoes":
+                    if "kachumbari" in name or "wet fry" in name or "wetfry" in name:
+                        revenue += total
+                elif target in name or (target == "kales" and "sukuma" in name): 
+                    sold_qty += qty; revenue += total
             elif b["category"] == "Water" and "water" in name:
                 if b["sub_category"] == "Small" and u_price < 100: sold_qty += qty; revenue += total
                 elif b["sub_category"] == "1 Litre" and u_price >= 100: sold_qty += qty; revenue += total
@@ -1250,8 +1257,24 @@ async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(Secur
         expected_remaining = b["quantity_initial"] - sold_qty
         lost_qty = round(expected_remaining - payload.actual_remaining_qty, 2)
         
-        avg_price = revenue / sold_qty if sold_qty > 0 else (b["cost"] / b["quantity_initial"])
-        money_lost = round(lost_qty * avg_price, 2) if lost_qty > 0 else 0.0
+        # Determine Selling Price for Loss Calculation
+        if sold_qty > 0:
+            # If sales exist, use the exact average retail price from this shift
+            selling_price = revenue / sold_qty 
+        else:
+            # If 0 sales were made, fetch the retail price from the menu to calculate actual loss
+            menu_res = supabase.table("menu_items").select("price, name").ilike("name", f"%{b['sub_category']}%").eq("is_active", True).execute()
+            if menu_res.data and len(menu_res.data) > 0:
+                selling_price = float(menu_res.data[0]["price"])
+                # Scale meat price up if the menu returned a 1/4kg portion price
+                if b["category"] == "Meat" and "1/4" in str(menu_res.data[0].get("name", "")):
+                    selling_price = selling_price * 4
+            else:
+                # Absolute fallback: Assume a standard 60% retail markup on cost if not in menu
+                selling_price = (b["cost"] / b["quantity_initial"]) * 1.6
+                
+        # Calculate loss based on Selling (Retail) Price
+        money_lost = round(lost_qty * selling_price, 2) if lost_qty > 0 else 0.0
         
         notes = f"Depleted clean."
         if lost_qty > 0:

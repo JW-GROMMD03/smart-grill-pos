@@ -250,7 +250,7 @@
                             </div>
                             <div id="invCarryOverDiv" class="hidden flex items-center space-x-3 w-full md:w-auto">
                                 <label class="text-xs font-bold uppercase text-rose-500">Amount Remaining:</label>
-                                <input type="number" step="0.01" id="invPrevRemaining" placeholder="Qty" class="w-24 bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-600 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-rose-500">
+                                <input type="number" step="0.01" id="invPrevRemaining" placeholder="Qty" class="w-24 bg-white dark:bg-slate-900 border border-rose-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-rose-500">
                             </div>
                             <button onclick="submitNewStock()" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-lg transition">Add Stock & Log Expense</button>
                         </div>
@@ -926,8 +926,8 @@
                 sub.innerHTML = '<option value="Coke">Coca-Cola</option><option value="Pepsi">Pepsi</option>';
                 qtyLabel.innerText = "Quantity (Crates)";
             } else if (cat === 'Greens') {
-                sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Mchicha">Mchicha</option>';
-                qtyLabel.innerText = "Quantity (Units)";
+                sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Mchicha">Mchicha</option><option value="Tomatoes">Tomatoes</option>';
+                qtyLabel.innerText = "Quantity (Buckets / KG)";
             } else if (cat === 'Water') {
                 sub.innerHTML = '<option value="Small">Small (500ml)</option><option value="1 Litre">1 Litre</option>';
                 qtyLabel.innerText = "Quantity (Bottles)";
