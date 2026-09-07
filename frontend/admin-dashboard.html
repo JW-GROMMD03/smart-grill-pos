@@ -33,6 +33,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -205,16 +207,18 @@
                                 <option value="Soda">Soda</option>
                                 <option value="Greens">Greens</option>
                                 <option value="Water">Water</option>
+                                <option value="Others">Others (Custom)</option>
                             </select>
                         </div>
                         <div id="invSubCatDiv">
-                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Sub-Category</label>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Sub-Category / Name</label>
                             <select id="invSubCat" onchange="renderFishInputs()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 <!-- Populated dynamically based on category -->
                             </select>
+                            <input type="text" id="invSubCatCustom" placeholder="Enter Item Name" class="hidden w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div id="singleQtyDiv">
-                            <label id="invQtyLabel" class="block text-xs font-bold uppercase mb-1 text-slate-400">Quantity (KG)</label>
+                            <label id="invQtyLabel" class="block text-xs font-bold uppercase mb-1 text-slate-400">Quantity</label>
                             <input type="number" step="0.01" id="invQty" placeholder="e.g. 5.5" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div>
@@ -260,6 +264,33 @@
                     </div>
                 </div>
 
+                <!-- Shift-Level Stock Analysis -->
+                <div class="glass-panel overflow-hidden shadow-md border-t-4 border-t-indigo-500">
+                    <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800/50">
+                        <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Shift Resource Analysis</h3>
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs font-bold uppercase text-slate-500">Filter Date:</label>
+                            <input type="date" id="shiftAnalysisDate" onchange="loadShiftAnalysis()" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left data-table whitespace-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Shift</th>
+                                    <th>Total Cost (Exp)</th>
+                                    <th>Total Revenue</th>
+                                    <th>Est. Net Return</th>
+                                    <th>Efficiency</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shiftAnalysisBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Real-time Active Stock Monitor -->
                 <div class="glass-panel overflow-hidden shadow-md">
                     <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800/50">
@@ -277,6 +308,7 @@
                                     <th>Sold (Real-Time)</th>
                                     <th>Est. Remaining</th>
                                     <th>Cost / Rev</th>
+                                    <th>Profit</th>
                                     <th>Status</th>
                                     <th class="text-right">Action</th>
                                 </tr>
@@ -290,18 +322,34 @@
 
                 <!-- Depleted Stock / History & Analysis -->
                 <div class="glass-panel overflow-hidden shadow-md">
-                    <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800/50">
+                    <div class="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800/50">
                         <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white">Depletion History & Analysis</h3>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="date" id="historyDateFilter" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none">
+                            <select id="historyCatFilter" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded p-1.5 text-sm outline-none">
+                                <option value="All">All Categories</option>
+                                <option value="Meat">Meat</option>
+                                <option value="Fish">Fish</option>
+                                <option value="Ugali">Ugali</option>
+                                <option value="Soda">Soda</option>
+                                <option value="Greens">Greens</option>
+                                <option value="Water">Water</option>
+                                <option value="Others">Others</option>
+                            </select>
+                            <button onclick="loadInventoryHistory()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-xs px-3 py-1.5 rounded font-bold transition">Filter</button>
+                            <button onclick="exportHistoryPDF()" class="bg-brand-primary hover:bg-brand-secondary text-white text-xs px-3 py-1.5 rounded font-bold transition">PDF Export</button>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left data-table whitespace-nowrap">
+                        <table class="w-full text-left data-table whitespace-nowrap" id="historyTable">
                             <thead>
                                 <tr>
                                     <th>Batch / Date</th>
-                                    <th>Duration Lasted</th>
-                                    <th>Discrepancy (Missing)</th>
-                                    <th>Est. Financial Loss</th>
+                                    <th>Duration</th>
+                                    <th>Loss/Missing</th>
+                                    <th>Profit/Return</th>
                                     <th>Analysis Notes</th>
+                                    <th class="text-right">Manage</th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryHistoryBody">
@@ -756,6 +804,30 @@
         </div>
     </div>
 
+    <!-- History Edit Modal -->
+    <div id="editHistoryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-2xl w-full max-w-md space-y-4 border border-slate-200 dark:border-slate-700">
+            <h3 class="text-xl font-bold text-brand-primary">Edit History Record</h3>
+            <input type="hidden" id="editHistId">
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Initial Quantity</label>
+                <input type="number" step="0.01" id="editHistQty" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Cost (KES)</label>
+                <input type="number" id="editHistCost" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Analysis Notes</label>
+                <input type="text" id="editHistNotes" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm outline-none">
+            </div>
+            <div class="flex space-x-3 pt-4">
+                <button onclick="submitEditHistory()" class="flex-1 bg-brand-primary text-white font-bold py-3 rounded-lg shadow-lg hover:bg-brand-secondary transition">Save</button>
+                <button onclick="closeEditHistoryModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 font-bold py-3 rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="profileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity p-4">
         <div class="bg-white dark:bg-brand-card p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
             <div class="flex justify-between items-center mb-6">
@@ -803,6 +875,7 @@
             document.getElementById('expMonthFilter').value = today.slice(0, 7);
             document.getElementById('recMonthInput').value = today.slice(0, 7);
             document.getElementById('recYearInput').value = today.slice(0, 4);
+            document.getElementById('shiftAnalysisDate').value = today;
             
             if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.documentElement.classList.add('dark');
@@ -927,36 +1000,45 @@
         function toggleInvSubCat() {
             const cat = document.getElementById('invCat').value;
             const sub = document.getElementById('invSubCat');
+            const customSub = document.getElementById('invSubCatCustom');
             const qtyLabel = document.getElementById('invQtyLabel');
             const singleQtyDiv = document.getElementById('invQty').parentElement;
             const multiQtyDiv = document.getElementById('multiQtyDiv');
-            const subCatDiv = document.getElementById('invSubCatDiv');
             
             sub.innerHTML = '';
             multiQtyDiv.innerHTML = '';
             multiQtyDiv.classList.add('hidden');
             singleQtyDiv.classList.remove('hidden');
-            subCatDiv.classList.remove('hidden');
             document.getElementById('invQty').disabled = false;
             
-            if (cat === 'Meat') {
-                sub.innerHTML = '<option value="Beef">Beef</option><option value="Mbuzi">Mbuzi</option><option value="Chicken">Chicken</option><option value="Bone Soup">Bone Soup</option>';
-                qtyLabel.innerText = "Quantity (KG)";
-            } else if (cat === 'Fish') {
-                sub.innerHTML = '<option value="Tilapia">Tilapia</option><option value="Mbuta">Mbuta</option>';
-                renderFishInputs();
-            } else if (cat === 'Soda') {
-                sub.innerHTML = '<option value="Coke">Coca-Cola</option><option value="Pepsi">Pepsi</option>';
-                qtyLabel.innerText = "Quantity (Crates)";
-            } else if (cat === 'Greens') {
-                sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Mchicha">Mchicha</option><option value="Tomatoes">Tomatoes</option>';
-                singleQtyDiv.classList.add('hidden');
-            } else if (cat === 'Water') {
-                sub.innerHTML = '<option value="Small">Small (500ml)</option><option value="1 Litre">1 Litre</option>';
-                qtyLabel.innerText = "Quantity (Bottles)";
-            } else if (cat === 'Ugali') {
-                sub.innerHTML = '<option value="Maize Flour">Maize Flour</option>';
-                qtyLabel.innerText = "Quantity (Bales / KG)";
+            if(cat === 'Others') {
+                sub.classList.add('hidden');
+                customSub.classList.remove('hidden');
+                qtyLabel.innerText = "Quantity (Units)";
+            } else {
+                sub.classList.remove('hidden');
+                customSub.classList.add('hidden');
+                customSub.value = '';
+
+                if (cat === 'Meat') {
+                    sub.innerHTML = '<option value="Beef">Beef</option><option value="Mbuzi">Mbuzi</option><option value="Chicken">Chicken</option><option value="Bone Soup">Bone Soup</option>';
+                    qtyLabel.innerText = "Quantity (KG)";
+                } else if (cat === 'Fish') {
+                    sub.innerHTML = '<option value="Tilapia">Tilapia</option><option value="Mbuta">Mbuta</option>';
+                    renderFishInputs();
+                } else if (cat === 'Soda') {
+                    sub.innerHTML = '<option value="Coke">Coca-Cola</option><option value="Pepsi">Pepsi</option>';
+                    qtyLabel.innerText = "Quantity (Crates)";
+                } else if (cat === 'Greens') {
+                    sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Managu">Managu (Plain/Special)</option><option value="Mchicha">Mchicha</option><option value="Tomatoes">Tomatoes</option>';
+                    singleQtyDiv.classList.add('hidden'); // Greens qty generally implied
+                } else if (cat === 'Water') {
+                    sub.innerHTML = '<option value="Small">Small (500ml)</option><option value="1 Litre">1 Litre</option>';
+                    qtyLabel.innerText = "Quantity (Bottles)";
+                } else if (cat === 'Ugali') {
+                    sub.innerHTML = '<option value="Maize Flour">Maize Flour</option>';
+                    qtyLabel.innerText = "Quantity (Bales / KG)";
+                }
             }
         }
 
@@ -1031,7 +1113,11 @@
             loadShiftStatus();
             if(currentTab === 'sales') loadSales();
             if(currentTab === 'analytics') loadDeepBI();
-            if(currentTab === 'inventory') loadInventory();
+            if(currentTab === 'inventory') {
+                loadInventory();
+                loadInventoryHistory();
+                loadShiftAnalysis();
+            }
             if(currentTab === 'expenses') loadExpenses();
             if(currentTab === 'records') loadComprehensiveRecords();
             if(currentTab === 'menu') loadMenu();
@@ -1050,9 +1136,10 @@
                 // Render Live Table
                 document.getElementById('inventoryTableBody').innerHTML = data.active.map(b => {
                     let roiColor = 'text-slate-400';
-                    if (b.revenue > b.cost) roiColor = 'text-emerald-500';
-                    else if (b.revenue === b.cost) roiColor = 'text-amber-500';
-                    else if (b.revenue < b.cost) roiColor = 'text-rose-500';
+                    const profit = (b.revenue || 0) - (b.cost || 0);
+                    if (profit > 0) roiColor = 'text-emerald-500';
+                    else if (profit === 0) roiColor = 'text-amber-500';
+                    else roiColor = 'text-rose-500';
 
                     let unit = "Units";
                     if(b.category === "Meat") unit = "KG";
@@ -1076,38 +1163,82 @@
                             <div class="text-xs">Cost: ${formatKsh(b.cost)}</div>
                             <div class="text-xs font-bold ${roiColor}">Rev: ${formatKsh(b.revenue)}</div>
                         </td>
+                        <td class="font-bold ${roiColor}">${formatKsh(profit)}</td>
                         <td>${alertBadge || '<span class="text-emerald-500 text-xs font-bold">HEALTHY</span>'}</td>
                         <td class="text-right flex space-x-2 justify-end">
                             <button onclick="openAuditModal('${b.id}', '${b.sub_category}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1.5 rounded transition">Audit</button>
-                            <button onclick="openDepleteModal('${b.id}', '${b.sub_category}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1.5 rounded transition">Mark Depleted</button>
+                            <button onclick="openDepleteModal('${b.id}', '${b.sub_category}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1.5 rounded transition">Deplete</button>
                         </td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-4">No active stock batches.</td></tr>';
-
-                // Render History Table
-                document.getElementById('inventoryHistoryBody').innerHTML = data.history.map(h => {
-                    const dateStr = new Date(h.created_at).toLocaleDateString();
-                    return `
-                    <tr>
-                        <td>
-                            <div class="font-bold text-slate-800 dark:text-white">${h.sub_category}</div>
-                            <div class="text-[10px] text-slate-500">${h.category} • ${dateStr}</div>
-                        </td>
-                        <td class="text-xs text-slate-600">${h.duration_hrs ? h.duration_hrs.toFixed(1) + ' hrs' : '-'}</td>
-                        <td class="font-bold ${h.declared_lost_qty > 0 ? 'text-rose-500' : 'text-slate-500'}">${h.declared_lost_qty > 0 ? h.declared_lost_qty.toFixed(2) : 'None'}</td>
-                        <td class="font-bold ${h.money_lost > 0 ? 'text-rose-500' : 'text-slate-500'}">${formatKsh(h.money_lost)}</td>
-                        <td class="text-[10px] max-w-[200px] whitespace-normal text-amber-600">${h.analysis_notes || 'Clean depletion.'}</td>
-                    </tr>`;
-                }).join('') || '<tr><td colspan="5" class="text-center text-slate-400 py-4">No historical records yet.</td></tr>';
+                }).join('') || '<tr><td colspan="8" class="text-center text-slate-400 py-4">No active stock batches.</td></tr>';
 
             } catch (err) {
                 console.error("Inventory Load Error:", err);
             }
         }
 
+        async function loadInventoryHistory() {
+            const date = document.getElementById('historyDateFilter').value;
+            const cat = document.getElementById('historyCatFilter').value;
+            
+            let query = `?category=${cat}`;
+            if(date) query += `&date=${date}`;
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/history${query}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                if(!res.ok) return;
+                const history = await res.json();
+
+                document.getElementById('inventoryHistoryBody').innerHTML = history.map(h => {
+                    const dateStr = new Date(h.created_at).toLocaleDateString();
+                    const profitColor = (h.profit || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500';
+                    return `
+                    <tr>
+                        <td><div class="font-bold">${h.sub_category}</div><div class="text-[10px] text-slate-500">${h.category} • ${dateStr}</div></td>
+                        <td class="text-xs">${h.duration_hrs ? h.duration_hrs.toFixed(1) + ' hrs' : '-'}</td>
+                        <td><div class="font-bold text-rose-500">Qty: ${h.declared_lost_qty > 0 ? h.declared_lost_qty.toFixed(2) : '0'}</div><div class="text-[10px]">Val: ${formatKsh(h.money_lost)}</div></td>
+                        <td class="font-bold ${profitColor}">${formatKsh(h.profit)}</td>
+                        <td class="text-[10px] max-w-[200px] whitespace-normal">${h.analysis_notes || 'Clean depletion.'}</td>
+                        <td class="text-right space-x-1">
+                            <button onclick="openEditHistory('${h.id}', ${h.quantity_initial}, ${h.cost}, '${h.analysis_notes || ''}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded font-bold transition">Edit</button>
+                            <button onclick="deleteHistory('${h.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs px-2 py-1 rounded font-bold transition">Delete</button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="text-center text-slate-400 py-4">No historical records found.</td></tr>';
+            } catch (err) {}
+        }
+
+        async function loadShiftAnalysis() {
+            const date = document.getElementById('shiftAnalysisDate').value;
+            if(!date) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/shift-analysis?date=${date}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                if(!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('shiftAnalysisBody').innerHTML = data.shifts.map(s => {
+                    const eff = s.cost > 0 ? ((s.revenue / s.cost) * 100).toFixed(1) : 0;
+                    return `
+                    <tr>
+                        <td class="font-bold">${s.shift}</td>
+                        <td class="text-rose-500 font-medium">${formatKsh(s.cost)}</td>
+                        <td class="text-emerald-500 font-medium">${formatKsh(s.revenue)}</td>
+                        <td class="font-bold text-brand-primary">${formatKsh(s.profit)}</td>
+                        <td class="font-bold text-slate-500">${eff}% ROI</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="5" class="text-center py-4 text-slate-400">No shift data available for this date.</td></tr>';
+            } catch (err) {}
+        }
+
         async function submitNewStock() {
             const cat = document.getElementById('invCat').value;
-            const sub = document.getElementById('invSubCat').value;
+            let sub = document.getElementById('invSubCat').value;
+            if(cat === 'Others') sub = document.getElementById('invSubCatCustom').value.trim();
+
             const cost = parseFloat(document.getElementById('invCost').value);
             const payment = document.getElementById('invPayment').value;
             const prevDepleted = document.getElementById('invPrevDepleted').checked;
@@ -1115,6 +1246,8 @@
 
             const cashAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invCashAmt').value) : 0;
             const mpesaAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invMpesaAmt').value) : 0;
+
+            if (cat === 'Others' && !sub) return alert("Please specify the custom item name.");
 
             let items = [];
             
@@ -1160,6 +1293,7 @@
                     document.getElementById('invQty').value = '';
                     document.getElementById('invCost').value = '';
                     document.getElementById('invPrevRemaining').value = '';
+                    if(document.getElementById('invSubCatCustom')) document.getElementById('invSubCatCustom').value = '';
                     document.querySelectorAll('.fish-qty-input').forEach(i => i.value = '');
                     loadInventory();
                 } else {
@@ -1169,6 +1303,71 @@
             } catch (err) {
                 alert("Network error while adding stock.");
             }
+        }
+
+        function exportHistoryPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Inventory Depletion & Analysis Report", 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+            
+            doc.autoTable({
+                html: '#historyTable',
+                startY: 30,
+                theme: 'striped',
+                headStyles: { fillColor: [99, 102, 241] }, // Brand Primary
+                columns: [
+                    { header: 'Batch', dataKey: 0 },
+                    { header: 'Duration', dataKey: 1 },
+                    { header: 'Loss', dataKey: 2 },
+                    { header: 'Return', dataKey: 3 },
+                    { header: 'Notes', dataKey: 4 }
+                ],
+                columnStyles: { 5: { cellWidth: 0 } } // hide action buttons column
+            });
+            doc.save('Inventory-Report.pdf');
+        }
+
+        function openEditHistory(id, qty, cost, notes) {
+            document.getElementById('editHistId').value = id;
+            document.getElementById('editHistQty').value = qty;
+            document.getElementById('editHistCost').value = cost;
+            document.getElementById('editHistNotes').value = notes;
+            document.getElementById('editHistoryModal').classList.remove('hidden');
+        }
+        
+        function closeEditHistoryModal() { 
+            document.getElementById('editHistoryModal').classList.add('hidden'); 
+        }
+        
+        async function submitEditHistory() {
+            const id = document.getElementById('editHistId').value;
+            const payload = {
+                quantity_initial: parseFloat(document.getElementById('editHistQty').value),
+                cost: parseFloat(document.getElementById('editHistCost').value),
+                analysis_notes: document.getElementById('editHistNotes').value
+            };
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/batch/${id}`, {
+                    method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if(res.ok) { 
+                    closeEditHistoryModal(); 
+                    loadInventoryHistory(); 
+                }
+            } catch(e) {}
+        }
+
+        async function deleteHistory(id) {
+            if(!confirm("Delete this history record entirely? It cannot be recovered.")) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/batch/${id}`, {
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
+                });
+                if(res.ok) loadInventoryHistory();
+            } catch(e) {}
         }
 
         function openDepleteModal(id, name) {

@@ -1036,6 +1036,12 @@ class InventoryAudit(BaseModel):
     batch_id: str
     actual_remaining_qty: float = 0.0
 
+class BatchUpdate(BaseModel):
+    quantity_initial: Optional[float] = None
+    cost: Optional[float] = None
+    analysis_notes: Optional[str] = None
+    declared_lost_qty: Optional[float] = None
+
 def send_low_stock_email(batches: List[dict]):
     try:
         msg = EmailMessage()
@@ -1075,7 +1081,6 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
                 old_id = res.data[0]["id"]
                 supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat(), "analysis_notes": "Carried over into new stock."}).eq("id", old_id).execute()
                 carried_over_ids.append(old_id)
-        # Evenly split previous remaining across all inputs for simplicity, or assign to first item
         if items_to_process:
             items_to_process[0].quantity += payload.previous_remaining
     else:
@@ -1147,7 +1152,12 @@ async def get_live_inventory(background_tasks: BackgroundTasks, admin=Depends(Se
                 total = float(i.get("total") or i.get("subtotal") or 0)
                 u_price = float(i.get("unit_price") or (total/qty if qty > 0 else 0))
                 
-                if b["category"] == "Meat":
+                if b["category"] == "Others":
+                    if b["sub_category"].lower() in name:
+                        sold_qty += qty
+                        revenue += total
+
+                elif b["category"] == "Meat":
                     target_sub = b["sub_category"].lower()
                     if (cat in ["meat cuts", "meat"] or target_sub in name) and target_sub in name:
                         if target_sub in ["beef", "chicken", "bone soup"]:
@@ -1197,6 +1207,10 @@ async def get_live_inventory(background_tasks: BackgroundTasks, admin=Depends(Se
                     target = b["sub_category"].lower()
                     if target == "tomatoes":
                         if "kachumbari" in name or "wet fry" in name or "wetfry" in name:
+                            revenue += total
+                    elif target == "managu":
+                        if "managu" in name:
+                            sold_qty += qty
                             revenue += total
                     elif target in name or (target == "kales" and "sukuma" in name):
                         sold_qty += qty
@@ -1275,7 +1289,10 @@ async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(Secur
             total = float(i.get("total") or i.get("subtotal") or 0)
             u_price = float(i.get("unit_price") or (total/qty if qty > 0 else 0))
             
-            if b["category"] == "Meat":
+            if b["category"] == "Others":
+                if b["sub_category"].lower() in name:
+                    sold_qty += qty; revenue += total
+            elif b["category"] == "Meat":
                 target_sub = b["sub_category"].lower()
                 if (cat in ["meat cuts", "meat"] or target_sub in name) and target_sub in name:
                     if target_sub in ["beef", "chicken", "bone soup"]:
@@ -1310,6 +1327,9 @@ async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(Secur
                 if target == "tomatoes":
                     if "kachumbari" in name or "wet fry" in name or "wetfry" in name:
                         revenue += total
+                elif target == "managu":
+                    if "managu" in name:
+                        sold_qty += qty; revenue += total
                 elif target in name or (target == "kales" and "sukuma" in name): 
                     sold_qty += qty; revenue += total
             elif b["category"] == "Water" and "water" in name:
@@ -1375,7 +1395,10 @@ async def audit_inventory_batch(payload: InventoryAudit, admin=Depends(SecurityE
             total = float(i.get("total") or i.get("subtotal") or 0)
             u_price = float(i.get("unit_price") or (total/qty if qty > 0 else 0))
             
-            if b["category"] == "Meat":
+            if b["category"] == "Others":
+                if b["sub_category"].lower() in name:
+                    sold_qty += qty
+            elif b["category"] == "Meat":
                 target_sub = b["sub_category"].lower()
                 if (cat in ["meat cuts", "meat"] or target_sub in name) and target_sub in name:
                     if target_sub in ["beef", "chicken", "bone soup"]:
@@ -1404,7 +1427,9 @@ async def audit_inventory_batch(payload: InventoryAudit, admin=Depends(SecurityE
             elif b["category"] == "Soda" and b["sub_category"].lower() in name: sold_qty += qty
             elif b["category"] == "Greens":
                 target = b["sub_category"].lower()
-                if target in name or (target == "kales" and "sukuma" in name): sold_qty += qty
+                if target == "managu":
+                    if "managu" in name: sold_qty += qty
+                elif target in name or (target == "kales" and "sukuma" in name): sold_qty += qty
             elif b["category"] == "Water" and "water" in name:
                 if b["sub_category"] == "Small" and u_price < 100: sold_qty += qty
                 elif b["sub_category"] == "1 Litre" and u_price >= 100: sold_qty += qty
@@ -1419,3 +1444,79 @@ async def audit_inventory_batch(payload: InventoryAudit, admin=Depends(SecurityE
         return {"status": "success", "message": "Stock audited."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to audit batch: {str(e)}")
+
+@router.get("/inventory/history")
+async def get_inventory_history(category: Optional[str] = None, date: Optional[str] = None, admin=Depends(SecurityEngine.verify_token)):
+    try:
+        query = supabase.table("inventory_batches").select("*").eq("status", "DEPLETED")
+        if category and category != "All":
+            query = query.eq("category", category)
+        if date:
+            query = query.gte("created_at", f"{date}T00:00:00").lte("created_at", f"{date}T23:59:59")
+            
+        res = query.order("depleted_at", desc=True).limit(200).execute()
+        history = res.data or []
+        
+        for h in history:
+            if h.get("depleted_at") and h.get("created_at"):
+                td = datetime.fromisoformat(h["depleted_at"].replace('Z', '+00:00')) - datetime.fromisoformat(h["created_at"].replace('Z', '+00:00'))
+                h["duration_hrs"] = td.total_seconds() / 3600
+            else:
+                h["duration_hrs"] = 0
+            
+            rev_est = h.get("revenue_generated", (h["cost"] * 1.5)) 
+            h["profit"] = rev_est - h["cost"] - (h.get("money_lost") or 0)
+            
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/inventory/batch/{batch_id}")
+async def update_inventory_batch(batch_id: str, payload: BatchUpdate, admin=Depends(SecurityEngine.verify_token)):
+    try:
+        updates = {k: v for k, v in payload.dict(exclude_unset=True).items()}
+        if not updates: raise HTTPException(status_code=400, detail="No fields to update")
+        supabase.table("inventory_batches").update(updates).eq("id", batch_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/inventory/batch/{batch_id}")
+async def delete_inventory_batch(batch_id: str, admin=Depends(SecurityEngine.verify_token)):
+    try:
+        supabase.table("inventory_batches").delete().eq("id", batch_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/inventory/shift-analysis")
+async def shift_analysis(date: str, admin=Depends(SecurityEngine.verify_token)):
+    try:
+        exp_res = supabase.table("expenses").select("*").eq("business_date", date).execute()
+        expenses = exp_res.data or []
+        
+        sales_res = supabase.table("sales").select("*").eq("business_date", date).execute()
+        sales = sales_res.data or []
+        
+        shifts_data = {"Day": {"cost": 0, "revenue": 0}, "Night": {"cost": 0, "revenue": 0}}
+        
+        for e in expenses:
+            s_name = e.get("shift", "Day")
+            if s_name in shifts_data: shifts_data[s_name]["cost"] += e.get("amount", 0)
+            
+        for s in sales:
+            s_name = s.get("shift", "Day")
+            if s_name in shifts_data: shifts_data[s_name]["revenue"] += s.get("total_amount", 0)
+            
+        result = []
+        for s_name, data in shifts_data.items():
+            result.append({
+                "shift": s_name,
+                "cost": data["cost"],
+                "revenue": data["revenue"],
+                "profit": data["revenue"] - data["cost"]
+            })
+            
+        return {"shifts": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
