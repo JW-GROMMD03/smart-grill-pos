@@ -450,7 +450,8 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
 @router.delete("/users/{user_id}")
 async def delete_user_account(user_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
-        supabase.table("cashiers").update({"status": "DELETED"}).eq("id", user_id).execute()
+        # Permanently remove the row so the username/email can be reused
+        supabase.table("cashiers").delete().eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
         
         if hasattr(request.app.state, 'sockets'):
