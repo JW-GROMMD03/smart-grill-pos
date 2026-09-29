@@ -470,6 +470,7 @@ class ExpenseCreate(BaseModel):
     mpesa_amount: Optional[float] = 0.0
     business_date: Optional[str] = None
     shift: Optional[str] = "Day"
+    branch: str = "Smartgrill"
 
 @router.post("/expenses")
 async def create_admin_expense(payload: ExpenseCreate, request: Request, admin=Depends(SecurityEngine.verify_token)):
@@ -485,6 +486,7 @@ async def create_admin_expense(payload: ExpenseCreate, request: Request, admin=D
         "mpesa_amount": round(payload.mpesa_amount, 2) if payload.payment_type.upper() == 'PARTIAL' else (round(payload.amount, 2) if payload.payment_type.upper() == 'MPESA' else 0.0),
         "recorded_by": admin_id,
         "business_date": payload.business_date,
+        "branch": payload.branch,
         "shift": payload.shift
     }
 
@@ -507,6 +509,7 @@ async def get_filtered_expenses(
     month: Optional[str] = Query(default=None),
     date: Optional[str] = Query(default=None), 
     shift: Optional[str] = Query(default=None),
+    branch: Optional[str] = Query(default=None),
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
@@ -521,6 +524,9 @@ async def get_filtered_expenses(
         
         if shift and shift != "All":
             query = query.eq("shift", shift)
+
+        if branch and branch != "All" and branch != "All Branches":
+            query = query.eq("branch", branch)
             
         res = query.order("created_at", desc=True).execute()
         expenses = res.data or []
@@ -570,10 +576,11 @@ async def get_comprehensive_records(
     month: Optional[str] = Query(default=None),
     year: Optional[str] = Query(default=None),
     shift: Optional[str] = Query(default=None),
+    branch: Optional[str] = Query(default=None),
     admin=Depends(SecurityEngine.verify_token)
 ):
     try:
-        sales_query = supabase.table("sales").select("*, cashiers(full_name, assigned_shift)")
+        sales_query = supabase.table("sales").select("*, cashiers(full_name, assigned_shift), branch")
         exp_query = supabase.table("expenses").select("*") 
 
         if date:
@@ -587,6 +594,10 @@ async def get_comprehensive_records(
         elif year:
             sales_query = sales_query.gte("business_date", f"{year}-01-01").lte("business_date", f"{year}-12-31")
             exp_query = exp_query.gte("business_date", f"{year}-01-01").lte("business_date", f"{year}-12-31")
+
+        if branch and branch != "All" and branch != "All Branches":
+            sales_query = sales_query.eq("branch", branch)
+            exp_query = exp_query.eq("branch", branch)
 
         sales_res = sales_query.order("created_at", desc=True).execute()
         exp_res = exp_query.order("created_at", desc=True).execute()
@@ -640,13 +651,13 @@ async def get_comprehensive_records(
 @router.get("/sales/live")
 async def get_live_sales(
     business_date: str = Query(default=None),
-    branch: Optional[str] = Query(default=None),  # --- ADDED BRANCH QUERY PARAMETER ---
+    branch: Optional[str] = Query(default=None),  
     admin=Depends(SecurityEngine.verify_token)
 ):
     if not business_date:
         _, business_date = ShiftEngine.calculate_current_shift()
 
-    # --- BRANCH-AWARE CACHE KEY ---
+    # Normalize branch key for caching
     branch_key = branch.strip().lower() if branch else "all"
     cache_key = f"dashboard:analytics:{business_date}:{branch_key}"
     
@@ -662,7 +673,7 @@ async def get_live_sales(
     try:
         # --- FILTER SALES BY BRANCH IF SPECIFIED ---
         sales_query = supabase.table("sales").select("*").eq("business_date", business_date)
-        if branch and branch != "All":
+        if branch and branch not in ["All", "All Branches"]:
             sales_query = sales_query.eq("branch", branch)
             
         sales_res = sales_query.order("created_at", desc=True).execute()
@@ -682,16 +693,18 @@ async def get_live_sales(
             
             for s in sales:
                 c_info = cashier_map.get(s.get("cashier_id"))
-                s["cashiers"] = c_info if c_info else {"full_name": "Unknown", "assigned_shift": s.get("shift") or "N/A"}
+                s["cashiers"] = c_info if c_info else {"full_name": "Unknown", "assigned_shift": s.get("shift") or "N/A", "branch": s.get("branch", "N/A")}
+                s["branch"] = s.get("branch") or (c_info.get("branch") if c_info else "N/A")
                 s["item_summary"] = ", ".join(items_map.get(s["id"], []))
         else:
             for s in sales:
-                s["cashiers"] = {"full_name": "Unknown", "assigned_shift": s.get("shift") or "N/A"}
+                s["cashiers"] = {"full_name": "Unknown", "assigned_shift": s.get("shift") or "N/A", "branch": s.get("branch", "N/A")}
+                s["branch"] = s.get("branch", "N/A")
                 s["item_summary"] = ", ".join(items_map.get(s["id"], []))
 
         # --- FILTER EXPENSES BY BRANCH IF SPECIFIED ---
         exp_query = supabase.table("expenses").select("*").eq("business_date", business_date)
-        if branch and branch != "All":
+        if branch and branch not in ["All", "All Branches"]:
             exp_query = exp_query.eq("branch", branch)
             
         exp_res = exp_query.execute()
@@ -729,6 +742,7 @@ async def get_live_sales(
 async def get_deep_analytics(
     start_date: str = Query(default=None),
     end_date: str = Query(default=None),
+    branch: Optional[str] = Query(default=None),
     admin=Depends(SecurityEngine.verify_token)
 ):
     if not start_date or not end_date:
@@ -736,7 +750,8 @@ async def get_deep_analytics(
         start_date = start_date or current_date
         end_date = end_date or current_date
         
-    cache_key = f"smartgrill:deep_bi:{start_date}:{end_date}"
+    branch_key = branch.strip().lower() if branch else "all"
+    cache_key = f"smartgrill:deep_bi:{start_date}:{end_date}:{branch_key}"
     
     try:
         cached = await redis_client.get(cache_key)
@@ -748,10 +763,15 @@ async def get_deep_analytics(
         pass 
 
     try:
-        sales_res = supabase.table("sales").select("id, payment_method, cash_amount, mpesa_amount, total_amount").gte("business_date", start_date).lte("business_date", end_date).execute()
+        sales_query = supabase.table("sales").select("id, payment_method, cash_amount, mpesa_amount, total_amount").gte("business_date", start_date).lte("business_date", end_date)
+        if branch and branch != "All" and branch != "All Branches":
+            sales_query = sales_query.eq("branch", branch)
+            
+        sales_res = sales_query.execute()
         sales_map = {s["id"]: s for s in (sales_res.data or [])}
+        sale_ids = list(sales_map.keys())
 
-        items_res = supabase.table("sale_items").select("*").gte("created_at", f"{start_date}T00:00:00").lte("created_at", f"{end_date}T23:59:59").execute()
+        items_res = supabase.table("sale_items").select("*").in_("sale_id", sale_ids).execute() if sale_ids else {"data": []}
         items = items_res.data or []
 
         meat = {
@@ -939,7 +959,7 @@ async def register_cashier(
             "username": username, 
             "pin_hash": pin_hash, 
             "assigned_shift": assigned_shift,
-            "branch": branch,  # --- ASSIGN BRANCH ---
+            "branch": branch,  # Saved to database
             "status": "ACTIVE"
         }).execute()
         return {"status": "success"}
@@ -1045,6 +1065,7 @@ class InventoryBatchCreate(BaseModel):
     mpesa_amount: float = 0.0
     previous_depleted: bool = True
     previous_remaining: float = 0.0
+    branch: str = "All"
     items: Optional[List[BatchItem]] = None
 
 class InventoryDeplete(BaseModel):
@@ -1084,6 +1105,7 @@ def send_low_stock_email(batches: List[dict]):
 @router.post("/inventory/batch")
 async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, admin=Depends(SecurityEngine.verify_token)):
     admin_id = admin.get("sub")
+    target_branch = payload.branch if payload.branch else "Smartgrill"
     
     items_to_process = payload.items if payload.items else [BatchItem(sub_category=payload.sub_category, quantity=payload.quantity)]
     total_qty = sum(item.quantity for item in items_to_process)
@@ -1095,7 +1117,7 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
     carried_over_ids = []
     if not payload.previous_depleted and payload.previous_remaining > 0:
         for i in items_to_process:
-            res = supabase.table("inventory_batches").select("id").eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", i.sub_category).execute()
+            res = supabase.table("inventory_batches").select("id").eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", i.sub_category).eq("branch", target_branch).execute()
             if res.data:
                 old_id = res.data[0]["id"]
                 supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat(), "analysis_notes": "Carried over into new stock."}).eq("id", old_id).execute()
@@ -1104,7 +1126,7 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
             items_to_process[0].quantity += payload.previous_remaining
     else:
         for i in items_to_process:
-            supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat()}).eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", i.sub_category).execute()
+            supabase.table("inventory_batches").update({"status": "DEPLETED", "depleted_at": datetime.now(timezone.utc).isoformat()}).eq("status", "ACTIVE").eq("category", payload.category).eq("sub_category", i.sub_category).eq("branch", target_branch).execute()
 
     for item in items_to_process:
         item_qty = 0.0 if payload.category == "Greens" else float(item.quantity)
@@ -1119,13 +1141,14 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
             "cost": round(item_cost, 2),
             "payment_method": payload.payment_method.upper(),
             "status": "ACTIVE",
+            "branch": target_branch,  # Branch assignment
             "carried_over_from": carried_over_ids[0] if carried_over_ids else None,
             "recorded_by": admin_id
         }
         supabase.table("inventory_batches").insert(batch_data).execute()
         
     try:
-        desc = f"Stock Purchase: {payload.category}" + (f" ({payload.sub_category})" if not payload.items else " (Multiple)")
+        desc = f"Stock Purchase: {payload.category} [{target_branch}]" + (f" ({payload.sub_category})" if not payload.items else " (Multiple)")
         _, shift_date = ShiftEngine.calculate_current_shift()
         
         expense_payload = {
@@ -1136,21 +1159,22 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
             "mpesa_amount": round(payload.mpesa_amount, 2) if payload.payment_method.upper() == 'PARTIAL' else (round(payload.cost, 2) if payload.payment_method.upper() == 'MPESA' else 0.0),
             "recorded_by": admin_id,
             "business_date": shift_date,
+            "branch": target_branch,
             "shift": "Day" 
         }
         supabase.table("expenses").insert(expense_payload).execute()
-        
-        if hasattr(request.app.state, 'sockets'):
-            await request.app.state.sockets.broadcast_admin({"action": "refresh_sales"})
-            
         return {"status": "success", "message": "Batch added and expense logged successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add inventory batch: {str(e)}")
 
 @router.get("/inventory/live")
-async def get_live_inventory(background_tasks: BackgroundTasks, admin=Depends(SecurityEngine.verify_token)):
+async def get_live_inventory(background_tasks: BackgroundTasks, branch: Optional[str] = Query(default=None), admin=Depends(SecurityEngine.verify_token)):
     try:
-        res = supabase.table("inventory_batches").select("*").eq("status", "ACTIVE").order("created_at", desc=True).execute()
+        query = supabase.table("inventory_batches").select("*").eq("status", "ACTIVE")
+        if branch and branch != "All" and branch != "All Branches":
+            query = query.eq("branch", branch)
+            
+        res = query.order("created_at", desc=True).execute()
         batches = res.data or []
         
         active_response = []
