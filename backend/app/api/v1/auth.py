@@ -123,18 +123,26 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         
         cashier = res.data[0]
         
-        # STRICT BRANCH VERIFICATION
+        # --- MAXIMUM SECURITY BRANCH VALIDATION ---
         db_branch = str(cashier.get("branch") or "").strip().lower()
         req_branch = str(credentials.branch or "").strip().lower()
         
+        # 1. Ensure database has a registered branch
         if not db_branch:
-            raise HTTPException(status_code=403, detail="ACCESS DENIED: Account has no assigned branch.")
+            raise HTTPException(status_code=403, detail="SECURITY LOCK: Account has no assigned branch configuration.")
             
+        # 2. Ensure frontend request provided a branch
+        if not req_branch:
+            raise HTTPException(status_code=403, detail="SECURITY LOCK: Terminal branch selection is required.")
+            
+        # 3. Absolute mismatch rejection
         if db_branch != req_branch:
+            await SecurityEngine.record_failed_attempt(client_identifier)
             raise HTTPException(
                 status_code=403, 
-                detail=f"ACCESS DENIED: You are registered to '{cashier.get('branch')}', not '{credentials.branch}'."
+                detail=f"ACCESS DENIED: Account is registered to branch '{cashier.get('branch')}', not '{credentials.branch}'."
             )
+        # -------------------------------------------
 
         status = str(cashier.get("status") or "ACTIVE").strip().upper()
         if status == "DELETED":
@@ -150,7 +158,6 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         elif assigned_shift in ["NIGHT SHIFT", "NIGHT_SHIFT"]:
             assigned_shift = "NIGHT"
 
-        # Pass parameters to shift engine
         await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift, branch_id=cashier.get("branch"))
 
         if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
