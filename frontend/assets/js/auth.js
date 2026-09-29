@@ -29,12 +29,19 @@ if (loginForm) {
         const username = document.getElementById('username').value.trim();
         const pin = document.getElementById('pin').value.trim();
         const branchSelect = document.getElementById('branchSelect');
-        const branch = branchSelect ? branchSelect.value : 'Smartgrill';
+        const branch = branchSelect ? branchSelect.value.trim() : '';
         
         const alertBox = document.getElementById('alertBox');
         const submitBtn = document.getElementById('submitBtn');
         const btnSpinner = document.getElementById('btnSpinner');
         const btnText = document.getElementById('btnText');
+
+        // Prevent submission if no branch is chosen or if placeholder is selected
+        if (!branch) {
+            alertBox.innerText = "Please select your assigned branch terminal.";
+            alertBox.classList.remove('hidden');
+            return;
+        }
 
         // Reset UI to loading state
         alertBox.classList.add('hidden');
@@ -57,7 +64,7 @@ if (loginForm) {
                 
                 localStorage.setItem('sg_token', token);
                 localStorage.setItem('sg_user', JSON.stringify(data));
-                localStorage.setItem('cashier_branch', branch);
+                localStorage.setItem('cashier_branch', data.branch || branch);
                 
                 // Prevent redirect loops by ensuring clean routing
                 window.location.replace('/cashier-dashboard.html');

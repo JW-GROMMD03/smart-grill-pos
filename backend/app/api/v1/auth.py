@@ -123,16 +123,18 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         
         cashier = res.data[0]
         
-        # 1. BRANCH VERIFICATION CHECK
-        cashier_branch = cashier.get("branch")
+        # STRICT BRANCH VERIFICATION
+        db_branch = str(cashier.get("branch") or "").strip().lower()
+        req_branch = str(credentials.branch or "").strip().lower()
         
-        if not cashier_branch or cashier_branch not in VALID_BRANCHES:
-            raise HTTPException(status_code=403, detail="ACCESS DENIED: Account is not registered under any valid branch.")
+        if not db_branch:
+            raise HTTPException(status_code=403, detail="ACCESS DENIED: Account has no assigned branch.")
             
-        # Validate that the requested branch from login matches the cashier's assigned branch
-        requested_branch = getattr(credentials, "branch", "Smartgrill")
-        if not requested_branch or requested_branch.strip().lower() != cashier_branch.strip().lower():
-            raise HTTPException(status_code=403, detail="ACCESS DENIED: You do not belong to this branch.")
+        if db_branch != req_branch:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"ACCESS DENIED: You are registered to '{cashier.get('branch')}', not '{credentials.branch}'."
+            )
 
         status = str(cashier.get("status") or "ACTIVE").strip().upper()
         if status == "DELETED":
@@ -148,8 +150,8 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         elif assigned_shift in ["NIGHT SHIFT", "NIGHT_SHIFT"]:
             assigned_shift = "NIGHT"
 
-        # Pass cashier_id, assigned_shift, and branch_id to ShiftEngine validation
-        await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift, branch_id=cashier_branch)
+        # Pass parameters to shift engine
+        await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift, branch_id=cashier.get("branch"))
 
         if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
             raise ValueError("Invalid credentials")
@@ -161,14 +163,14 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
             "username": cashier["username"],
             "role": "cashier",
             "shift": cashier.get("assigned_shift", "Day"),
-            "branch": cashier_branch
+            "branch": cashier.get("branch")
         })
 
         return {
             "id": cashier["id"],
             "username": cashier["username"],
             "full_name": cashier["full_name"],
-            "branch": cashier_branch,
+            "branch": cashier.get("branch"),
             "role": "cashier",
             "token": token
         }
