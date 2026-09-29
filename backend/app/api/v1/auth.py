@@ -14,6 +14,8 @@ from app.core.shift_engine import ShiftEngine
 
 router = APIRouter()
 
+VALID_BRANCHES = {"Smartgrill", "nyama villa", "Smart kitchen", "Smart Resort", "Smart Villa"}
+
 def send_otp_email(receiver_email: str, otp: str):
     msg = EmailMessage()
     msg.set_content(f"Your Smart Grill Executive Access Code is: {otp}\n\nThis code expires in 5 minutes.")
@@ -44,7 +46,7 @@ async def login(credentials: LoginSchema, request: Request):
         if not user:
             raise ValueError("Invalid user object")
 
-        profile_res = supabase.table("profiles").select("role, full_name").eq("id", user.id).execute()
+        profile_res = supabase.table("profiles").select("role, full_name, branch").eq("id", user.id).execute()
         user_data = profile_res.data[0] if profile_res.data else {}
 
         if user_data.get("role") != "admin":
@@ -54,13 +56,13 @@ async def login(credentials: LoginSchema, request: Request):
 
         otp = str(random.randint(100000, 999999))
         token = SecurityEngine.create_access_token({
-            "sub": user.id, "email": user.email, "role": "admin"
+            "sub": user.id, "email": user.email, "role": "admin", "branch": user_data.get("branch")
         })
 
         payload = {
             "id": user.id, "email": user.email, 
             "full_name": user_data.get("full_name", "Admin"), 
-            "role": "admin", "token": token
+            "role": "admin", "token": token, "branch": user_data.get("branch")
         }
         
         await redis_client.setex(f"otp:{credentials.email}:{otp}", 300, json.dumps(payload))
@@ -120,24 +122,30 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         
         cashier = res.data[0]
         
-        # 1. STRICT ACCESS CONTROL: Normalize status check to handle case variations
-        status = str(cashier.get("status") or "ACTIVE").strip().upper()
+        # 1. BRANCH VERIFICATION CHECK
+        valid_branches = ["Smartgrill", "nyama villa", "Smart kitchen", "Smart Resort", "Smart Villa"]
+        cashier_branch = cashier.get("branch")
         
+        if not cashier_branch or cashier_branch not in valid_branches:
+            raise HTTPException(status_code=403, detail="ACCESS DENIED: Account is not registered under any valid branch.")
+            
+        if credentials.branch.strip().lower() != cashier_branch.strip().lower():
+            raise HTTPException(status_code=403, detail="ACCESS DENIED: You do not belong to this branch.")
+
+        status = str(cashier.get("status") or "ACTIVE").strip().upper()
         if status == "DELETED":
-            raise ValueError("Invalid credentials") # Treat deleted accounts as non-existent
+            raise ValueError("Invalid credentials")
             
         if status == "BLOCKED":
             reason = cashier.get("block_reason") or "Account suspended. Contact Admin."
             raise HTTPException(status_code=403, detail=f"ACCESS DENIED: {reason}")
 
-        # 2. DYNAMIC ACCESS CONTROL: Validate Current Shift Access via ShiftEngine
         assigned_shift = str(cashier.get("assigned_shift", "Day")).strip().upper()
         if assigned_shift in ["DAY SHIFT", "DAY_SHIFT"]:
             assigned_shift = "DAY"
         elif assigned_shift in ["NIGHT SHIFT", "NIGHT_SHIFT"]:
             assigned_shift = "NIGHT"
 
-        # Validate shift access; throws 403 if locked out
         await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift)
 
         if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
@@ -149,13 +157,15 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
             "sub": cashier["id"],
             "username": cashier["username"],
             "role": "cashier",
-            "shift": cashier.get("assigned_shift", "Day")
+            "shift": cashier.get("assigned_shift", "Day"),
+            "branch": cashier_branch
         })
 
         return {
             "id": cashier["id"],
             "username": cashier["username"],
             "full_name": cashier["full_name"],
+            "branch": cashier_branch,
             "role": "cashier",
             "token": token
         }

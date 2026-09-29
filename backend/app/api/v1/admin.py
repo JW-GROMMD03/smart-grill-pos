@@ -1,3 +1,4 @@
+# admin.py
 import json
 import random
 import string
@@ -402,17 +403,15 @@ class UserBlockRequest(BaseModel):
     reason: Optional[str] = "Please contact manager for clarification."
 
 @router.get("/users")
-async def get_all_users(admin=Depends(SecurityEngine.verify_token)):
+async def get_all_users(branch: Optional[str] = Query(default=None), admin=Depends(SecurityEngine.verify_token)):
     try:
-        res = supabase.table("cashiers").select("id, full_name, username, assigned_shift, status, blocked_until, block_reason").execute()
+        query = supabase.table("cashiers").select("id, full_name, username, assigned_shift, branch, status, blocked_until, block_reason")
+        if branch and branch != "All":
+            query = query.eq("branch", branch)
+            
+        res = query.execute()
         users = res.data or []
-        
-        active_users = [
-            u for u in users 
-            if str(u.get("status") or "").strip().upper() != "DELETED"
-        ]
-        
-        return active_users
+        return [u for u in users if str(u.get("status") or "").strip().upper() != "DELETED"]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
@@ -641,12 +640,15 @@ async def get_comprehensive_records(
 @router.get("/sales/live")
 async def get_live_sales(
     business_date: str = Query(default=None),
+    branch: Optional[str] = Query(default=None),  # --- ADDED BRANCH QUERY PARAMETER ---
     admin=Depends(SecurityEngine.verify_token)
 ):
     if not business_date:
         _, business_date = ShiftEngine.calculate_current_shift()
 
-    cache_key = f"dashboard:analytics:{business_date}"
+    # --- BRANCH-AWARE CACHE KEY ---
+    branch_key = branch.strip().lower() if branch else "all"
+    cache_key = f"dashboard:analytics:{business_date}:{branch_key}"
     
     try:
         cached = await redis_client.get(cache_key)
@@ -658,7 +660,12 @@ async def get_live_sales(
         pass 
 
     try:
-        sales_res = supabase.table("sales").select("*").eq("business_date", business_date).order("created_at", desc=True).execute()
+        # --- FILTER SALES BY BRANCH IF SPECIFIED ---
+        sales_query = supabase.table("sales").select("*").eq("business_date", business_date)
+        if branch and branch != "All":
+            sales_query = sales_query.eq("branch", branch)
+            
+        sales_res = sales_query.order("created_at", desc=True).execute()
         sales = sales_res.data or []
 
         sale_ids = [s["id"] for s in sales]
@@ -670,7 +677,7 @@ async def get_live_sales(
 
         cashier_ids = list(set(s.get("cashier_id") for s in sales if s.get("cashier_id")))
         if cashier_ids:
-            cashiers_res = supabase.table("cashiers").select("id, full_name, assigned_shift").in_("id", cashier_ids).execute()
+            cashiers_res = supabase.table("cashiers").select("id, full_name, assigned_shift, branch").in_("id", cashier_ids).execute()
             cashier_map = {c["id"]: c for c in (cashiers_res.data or [])}
             
             for s in sales:
@@ -682,7 +689,12 @@ async def get_live_sales(
                 s["cashiers"] = {"full_name": "Unknown", "assigned_shift": s.get("shift") or "N/A"}
                 s["item_summary"] = ", ".join(items_map.get(s["id"], []))
 
-        exp_res = supabase.table("expenses").select("*").eq("business_date", business_date).execute()
+        # --- FILTER EXPENSES BY BRANCH IF SPECIFIED ---
+        exp_query = supabase.table("expenses").select("*").eq("business_date", business_date)
+        if branch and branch != "All":
+            exp_query = exp_query.eq("branch", branch)
+            
+        exp_res = exp_query.execute()
         expenses = exp_res.data or []
         
         cash_sales = sum(float(s.get("cash_amount") or 0) for s in sales)
@@ -693,6 +705,7 @@ async def get_live_sales(
 
         payload = {
             "business_date": business_date,
+            "branch": branch or "All",
             "cash_at_hand": round(cash_at_hand, 2),
             "cash_sales": round(cash_sales, 2),
             "mpesa_sales": round(mpesa_sales, 2),
@@ -707,6 +720,7 @@ async def get_live_sales(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database fetch failed for live sales: {str(e)}")
 
+    
 # ==========================================
 # DEEP BUSINESS INTELLIGENCE (CACHE-ASIDE)
 # ==========================================
@@ -911,9 +925,13 @@ async def get_deep_analytics(
 
 @router.post("/cashiers/register")
 async def register_cashier(
-    full_name: str, username: str, pin: str, assigned_shift: str,
+    full_name: str, username: str, pin: str, assigned_shift: str, branch: str,
     admin=Depends(SecurityEngine.verify_token)
 ):
+    valid_branches = ["Smartgrill", "nyama villa", "Smart kitchen", "Smart Resort", "Smart Villa"]
+    if branch not in valid_branches:
+        raise HTTPException(status_code=400, detail="Invalid branch selected.")
+        
     try:
         pin_hash = SecurityEngine.hash_password(pin)
         supabase.table("cashiers").insert({
@@ -921,6 +939,7 @@ async def register_cashier(
             "username": username, 
             "pin_hash": pin_hash, 
             "assigned_shift": assigned_shift,
+            "branch": branch,  # --- ASSIGN BRANCH ---
             "status": "ACTIVE"
         }).execute()
         return {"status": "success"}

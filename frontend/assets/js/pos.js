@@ -1,3 +1,4 @@
+// pos.js
 const API_POS = '/api/v1/pos';
 
 let cart = JSON.parse(localStorage.getItem('sg_cart')) || [];
@@ -217,7 +218,7 @@ function triggerQuantityModal(name, category, price) {
       let kgLabel = "1 KG";
       if (price <= 275 || (price === 200)) kgLabel = "1/4 KG";
       else if (price <= 600 || price === 350) kgLabel = "1/2 KG";
-      displayName = `${name} - ${kgLabel} (${price}/=)`;
+      displayName = `${name} (${kgLabel}) (${price}/=)`;
   }
   
   document.getElementById('qtyItemName').innerText = displayName;

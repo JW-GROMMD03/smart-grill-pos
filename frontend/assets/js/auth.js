@@ -1,3 +1,4 @@
+// auth.js
 const API_URL = '/api/v1/auth';
 let inactivityTimer;
 
@@ -82,7 +83,7 @@ if (loginForm) {
             }
         } catch (err) {
             alertBox.innerText = 'Server connection error.';
-            alertBox.classList.remove('hidden');
+            alertBox.classList.add('hidden');
         } finally {
             // Restore UI state
             submitBtn.disabled = false;

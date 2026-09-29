@@ -13,9 +13,9 @@ from app.api.v1 import auth, pos, admin
 from app.core.redis import check_redis_connection, redis_client
 from app.core.security import SecurityEngine
 
-# ==========================================
-# REAL-TIME WEBSOCKET MANAGER
-# ==========================================
+# =============================================================
+# REAL-TIME WEBSOCKET MANAGER FOR ADMIN AND CASHIER CONNECTIONS 
+# =============================================================
 class ConnectionManager:
     def __init__(self):
         self.admin_connections: List[WebSocket] = []
@@ -44,7 +44,7 @@ class ConnectionManager:
             except Exception:
                 pass
 
-    # NEW: Push payload directly to all connected cashiers
+    # Push payload directly to all connected cashiers
     async def broadcast_cashier(self, message: dict):
         for connection in self.cashier_connections.values():
             try:
@@ -108,9 +108,9 @@ async def health():
     return {"status": "online"}
 
 
-# ==========================================
+# =============================================================
 # WEBSOCKET ENDPOINTS
-# ==========================================
+# =============================================================
 def decode_token_safe(token: str) -> dict:
     """Safely decodes JWT passed in query string to bypass missing header 403 errors."""
     try:

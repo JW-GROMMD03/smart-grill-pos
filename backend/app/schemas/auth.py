@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 class LoginSchema(BaseModel):
     email: EmailStr
@@ -17,8 +18,10 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     token: str
+    branch: Optional[str] = None
 
-# --- ADD THIS FOR CASHIERS ---
+# --- UPDATED FOR CASHIERS WITH BRANCH SUPPORT ---
 class CashierLoginSchema(BaseModel):
     username: str
     pin: str
+    branch: str

@@ -22,7 +22,19 @@
 
     <form id="loginForm" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Username</label>
+        <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Select Branch</label>
+        <select id="branchSelect" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+          <option value="" disabled selected>-- Select Your Branch --</option>
+          <option value="Smartgrill">Smartgrill</option>
+          <option value="nyama villa">nyama villa</option>
+          <option value="Smart kitchen">Smart kitchen</option>
+          <option value="Smart Resort">Smart Resort</option>
+          <option value="Smart Villa">Smart Villa</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-300 uppercase mm-2">Username</label>
         <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
       </div>
 
@@ -39,8 +51,6 @@
         <span id="btnText">SIGN IN TO POS TERMINAL</span>
       </button>
     </form>
-    
-
   </div>
 
   <script src="/assets/js/auth.js"></script>

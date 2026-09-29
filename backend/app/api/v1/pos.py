@@ -1,3 +1,4 @@
+# pos.py
 import uuid
 import json
 import random
@@ -15,24 +16,22 @@ router = APIRouter()
 @router.get("/menu")
 @router.get("/menu/")
 async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
-    cached_menu = await redis_client.get("cache:menu_v4")
+    branch_id = user.get("branch_id", "branch_1")
+    cache_key = f"cache:menu_v4:{branch_id}"
+    cached_menu = await redis_client.get(cache_key)
     
     if cached_menu:
         if isinstance(cached_menu, bytes):
             cached_menu = cached_menu.decode('utf-8')
-            
         parsed_cache = json.loads(cached_menu)
-        # Prevent returning a poisoned empty cache
         if parsed_cache and len(parsed_cache) > 0:
             return parsed_cache
     
-    # If cache is missing or literally '[]', fetch from primary database
-    res = supabase.table("menu_items").select("*").eq("is_active", True).execute()
+    res = supabase.table("menu_items").select("*").eq("branch_id", branch_id).eq("is_active", True).execute()
     menu_data = res.data or []
     
-    # Only cache valid data
     if menu_data and len(menu_data) > 0:
-        await redis_client.setex("cache:menu_v4", 86400, json.dumps(menu_data))
+        await redis_client.setex(cache_key, 86400, json.dumps(menu_data))
         
     return menu_data
 
@@ -45,6 +44,7 @@ async def process_checkout(
 ):
     cashier_id = user.get("sub")
     assigned_shift = user.get("shift")
+    branch = user.get("branch")
 
     active_shift, business_date = await ShiftEngine.validate_shift_access(
         cashier_id, 
@@ -60,6 +60,7 @@ async def process_checkout(
     try:
         sale_res = supabase.table("sales").insert({
             "cashier_id": cashier_id,
+            "branch": branch,  # --- ADDED BRANCH COLUMN ---
             "payment_type": order.payment_method.upper(),
             "payment_method": order.payment_method.upper(),
             "cash_amount": order.cash_amount if order.payment_method.lower() in ['cash', 'partial'] else 0.0,
@@ -87,7 +88,6 @@ async def process_checkout(
         ]
         supabase.table("sale_items").insert(line_items).execute()
 
-        # INVALIDATE ALL ADMIN CACHES ON SUCCESSFUL SALE
         for key in await redis_client.keys("dashboard:analytics:*"):
             await redis_client.delete(key)
         for key in await redis_client.keys("smartgrill:deep_bi:*"):
@@ -99,20 +99,45 @@ async def process_checkout(
             raise e
         raise HTTPException(status_code=500, detail=f"Checkout execution failed: {str(e)}")
 
+@router.post("/expense")
+@router.post("/expense/")
+async def record_cashier_expense(expense: ExpenseSchema, user: dict = Depends(SecurityEngine.verify_token)):
+    if expense.amount > 1000:
+        raise HTTPException(status_code=400, detail="Expenses cannot exceed 1000 KSh.")
+
+    cashier_id = user.get("sub")
+    branch = user.get("branch")
+    current_shift, business_date = ShiftEngine.calculate_current_shift()
+
+    res = supabase.table("expenses").insert({
+        "description": expense.description,
+        "amount": expense.amount,
+        "payment_type": expense.payment_type.upper(),
+        "recorded_by": cashier_id,
+        "branch": branch,  # --- ADDED BRANCH COLUMN ---
+        "shift": current_shift,
+        "business_date": business_date
+    }).execute()
+
+    return {"status": "success", "data": res.data[0]}
+
+
 @router.get("/my-sales")
 @router.get("/my-sales/")
 async def get_my_sales(user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
+    branch_id = user.get("branch_id", "branch_1")
     current_shift, business_date = ShiftEngine.calculate_current_shift()
 
-    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
-    expenses_res = supabase.table("expenses").select("*").eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
+    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("branch_id", branch_id).eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
+    expenses_res = supabase.table("expenses").select("*").eq("branch_id", branch_id).eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
 
     cash_total = sum(s["cash_amount"] for s in sales_res.data)
     mpesa_total = sum(s["mpesa_amount"] for s in sales_res.data)
 
     return {
         "cashier_id": cashier_id,
+        "branch_id": branch_id,
         "shift": current_shift,
         "business_date": business_date,
         "summary": {
@@ -124,43 +149,19 @@ async def get_my_sales(user: dict = Depends(SecurityEngine.verify_token)):
         "expenses": expenses_res.data
     }
 
-@router.post("/expense")
-@router.post("/expense/")
-async def record_cashier_expense(expense: ExpenseSchema, user: dict = Depends(SecurityEngine.verify_token)):
-    if expense.amount > 1000:
-        raise HTTPException(status_code=400, detail="Expenses cannot exceed 1000 KSh.")
 
-    cashier_id = user.get("sub")
-    current_shift, business_date = ShiftEngine.calculate_current_shift()
-
-    res = supabase.table("expenses").insert({
-        "description": expense.description,
-        "amount": expense.amount,
-        "payment_type": expense.payment_type.upper(),
-        "recorded_by": cashier_id,
-        "shift": current_shift,
-        "business_date": business_date
-    }).execute()
-
-    # INVALIDATE CACHE ON EXPENSE
-    for key in await redis_client.keys("dashboard:analytics:*"):
-        await redis_client.delete(key)
-    for key in await redis_client.keys("smartgrill:deep_bi:*"):
-        await redis_client.delete(key)
-
-    return {"status": "success", "data": res.data[0]}
 
 @router.delete("/expense/{expense_id}")
 @router.delete("/expense/{expense_id}/")
 async def delete_expense(expense_id: str, user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
+    branch_id = user.get("branch_id", "branch_1")
     try:
-        supabase.table("expenses").delete().eq("id", expense_id).eq("recorded_by", cashier_id).execute()
+        supabase.table("expenses").delete().eq("id", expense_id).eq("branch_id", branch_id).eq("recorded_by", cashier_id).execute()
         
-        # INVALIDATE CACHE ON DELETION
-        for key in await redis_client.keys("dashboard:analytics:*"):
+        for key in await redis_client.keys(f"dashboard:analytics:{branch_id}:*"):
             await redis_client.delete(key)
-        for key in await redis_client.keys("smartgrill:deep_bi:*"):
+        for key in await redis_client.keys(f"smartgrill:deep_bi:{branch_id}:*"):
             await redis_client.delete(key)
 
         return {"status": "success", "message": "Expense deleted."}
@@ -171,12 +172,14 @@ async def delete_expense(expense_id: str, user: dict = Depends(SecurityEngine.ve
 @router.post("/request-delete-qr/")
 async def request_delete_qr(payload: QRDeleteRequestSchema, user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
+    branch_id = user.get("branch_id", "branch_1")
     qr_token = f"SG-DEL-{uuid.uuid4().hex[:12].upper()}"
     short_code = ''.join(random.choices(string.digits, k=6))
     
     cache_data = json.dumps({
         "target_id": payload.target_id,
         "cashier_id": cashier_id,
+        "branch_id": branch_id,
         "short_code": short_code,
         "status": "pending"
     })
