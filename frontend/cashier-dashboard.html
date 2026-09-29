@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Grill - Cashier Point of Sale</title>
+    <!-- Smart Grill Address Bar Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,7 +23,7 @@
     <!-- QR Code Library for Deletion Authorizations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
 
     <!-- TOP NAVIGATION BAR -->
     <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center sticky top-0 z-30 shadow-md">
@@ -38,12 +40,16 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            <button onclick="toggleModal('expensesModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
-                <span>💸</span> Log Expense
+        <div class="flex items-center gap-2 lg:gap-3">
+            <!-- Mobile Cart Drawer Toggle -->
+            <button onclick="toggleCartDrawer()" class="lg:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-amber-500/30 transition flex items-center gap-1.5 relative">
+                <span>🛒</span> Cart <span id="mobileCartCount" class="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
+            </button>
+            <button onclick="toggleModal('expensesModal')" class="hidden sm:flex bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition items-center gap-1.5">
+                <span>💸</span> Expense
             </button>
             <button onclick="toggleModal('receiptsModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
-                <span>📜</span> My Sales & History
+                <span>📜</span> <span class="hidden sm:inline">My Sales</span>
             </button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 py-2 rounded-lg border border-red-500/20 transition">
                 Logout
@@ -57,19 +63,19 @@
         <!-- MOBILE SIDEBAR OVERLAY -->
         <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden lg:hidden"></div>
 
-        <!-- SIDEBAR (HOLD QUEUE & CONTROLS) -->
+        <!-- LEFT SIDEBAR (HOLD QUEUE & CONTROLS) -->
         <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 w-80 bg-slate-900 border-r border-slate-800 z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
             <div class="p-4 border-b border-slate-800 flex justify-between items-center">
                 <h2 class="font-extrabold text-xs text-amber-400 uppercase tracking-widest">Hold Queue (Max 6)</h2>
                 <button onclick="holdCurrentOrder()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-2.5 py-1.5 rounded border border-amber-500/30 transition">
-                    + Hold Current Cart
+                    + Hold Cart
                 </button>
             </div>
             <div id="holdList" class="flex-1 overflow-y-auto p-3 space-y-2.5">
                 <!-- Held orders populated dynamically -->
             </div>
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 text-center">
-                <p class="text-[10px] text-slate-500 font-medium">Powered by HAVYN Tech Solutions</p>
+                <p class="text-[10px] text-slate-500 font-medium">Smart Grill POS v4.2</p>
             </div>
         </aside>
 
@@ -81,16 +87,21 @@
             </div>
             
             <!-- Dynamic Menu Grid Container -->
-            <div id="dynamicMenuGrid" class="space-y-6">
-                <!-- Populated dynamically by pos.js -->
+            <div id="dynamicMenuGrid" class="space-y-6 pb-20 lg:pb-6">
                 <div class="text-center py-12 text-slate-500 text-xs animate-pulse">Loading menu catalog...</div>
             </div>
         </main>
 
-        <!-- RIGHT PANEL: ACTIVE CART & CHECKOUT -->
-        <aside class="w-full lg:w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full z-10">
+        <!-- MOBILE CART OVERLAY BACKGROUND -->
+        <div id="cartOverlay" onclick="toggleCartDrawer()" class="fixed inset-0 bg-black/70 z-40 hidden lg:hidden"></div>
+
+        <!-- RIGHT PANEL: ACTIVE CART & CHECKOUT (RESPONSIVE DRAWER ON MOBILE) -->
+        <aside id="cartDrawer" class="fixed lg:static inset-y-0 right-0 w-80 sm:w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full z-50 transform translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out shadow-2xl">
             <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                <h2 class="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Active Order Cart</h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleCartDrawer()" class="lg:hidden text-slate-400 hover:text-white font-bold mr-1">✕</button>
+                    <h2 class="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Active Order Cart</h2>
+                </div>
                 <button onclick="requestAdminAction('cart_clear', 'all')" class="text-red-400 text-xs hover:underline font-bold">Clear Cart</button>
             </div>
 
@@ -100,7 +111,7 @@
             </div>
 
             <!-- CART CHECKOUT & PAYMENT CONTROLS -->
-            <div class="p-4 border-t border-slate-800 bg-slate-900/90 space-y-3">
+            <div class="p-4 border-t border-slate-800 bg-slate-900/95 space-y-3">
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-slate-400 font-medium">Grand Total:</span>
                     <span class="text-amber-400 font-black text-lg">KSh <span id="cartTotal">0.00</span></span>
@@ -232,13 +243,19 @@
     <!-- Load Core POS Controller Script -->
     <script src="/assets/js/pos.js"></script>
     <script>
-        // Initialize branch label from stored user data
         document.addEventListener("DOMContentLoaded", () => {
             const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
             if(user.branch) {
                 document.getElementById('cashierBranchLabel').innerText = `${user.branch} Workstation`;
             }
         });
+
+        function toggleCartDrawer() {
+            const drawer = document.getElementById('cartDrawer');
+            const overlay = document.getElementById('cartOverlay');
+            drawer.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
 
         function logout() {
             localStorage.removeItem('sg_token');

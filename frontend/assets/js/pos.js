@@ -57,6 +57,13 @@ function updateState() {
   saveState();
   renderCart();
   renderHoldQueue();
+  
+  // Update mobile cart item badge count
+  const badge = document.getElementById('mobileCartCount');
+  if(badge) {
+      const totalCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+      badge.innerText = totalCount;
+  }
 }
 
 function toggleSidebar() {
@@ -300,7 +307,7 @@ async function submitOrder() {
       const dataRes = await res.json();
       alert("Order Processed Successfully!");
       
-      // Trigger Branch Tailored Receipt Printing
+      // Trigger Thermal Printer Compatible Receipt Print
       printBranchReceipt(payload, dataRes.order_id);
 
       cart = [];
@@ -314,9 +321,9 @@ async function submitOrder() {
   }
 }
 
-// ==========================================
-// DYNAMIC BRANCH-TAILORED RECEIPT GENERATOR
-// ==========================================
+// =======================================================
+// THERMAL PRINTER COMPATIBLE RECEIPT GENERATOR & PRINTER
+// =======================================================
 function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
@@ -327,49 +334,67 @@ function printBranchReceipt(orderPayload, orderId) {
 
   if (lowerBranch.includes("smartgrill") || lowerBranch.includes("smart grill")) {
     contactLines = "Contacts: 0700041003 / 0759960035<br>Email: smartgrill2026@gmail.com";
-    paymentInfoLines = "M-Pesa Till: <strong>4325536</strong>";
+    paymentInfoLines = "M-Pesa Till Number: <strong>4325536</strong>";
   } else if (lowerBranch.includes("nyama villa")) {
     contactLines = "Contacts: 0700041003 / 0140 139 181";
     paymentInfoLines = "Pochi la Biashara: <strong>0140 139 181</strong>";
   } else if (lowerBranch.includes("smart kitchen")) {
     contactLines = "Contacts: 0700-041003 / 0104-041003";
-    paymentInfoLines = ""; // Leaves payment/other info clean as requested
+    paymentInfoLines = ""; 
   } else {
     contactLines = "";
     paymentInfoLines = "";
   }
 
   const itemsHtml = orderPayload.items.map(i => `
-    <tr style="border-bottom: 1px dashed #ddd;">
-      <td style="padding: 4px 0; text-align: left;">${i.item_name} (x${i.quantity})</td>
-      <td style="padding: 4px 0; text-align: right;">KSh ${i.subtotal.toFixed(2)}</td>
+    <tr>
+      <td style="padding: 5px 0; text-align: left; word-break: break-word;">${i.item_name} (x${i.quantity})</td>
+      <td style="padding: 5px 0; text-align: right; white-space: nowrap;">KSh ${i.subtotal.toFixed(2)}</td>
     </tr>
   `).join('');
 
-  const receiptWindow = window.open('', '_blank', 'width=400,height=600');
+  const receiptWindow = window.open('', '_blank', 'width=350,height=600');
   receiptWindow.document.write(`
+    <!DOCTYPE html>
     <html>
       <head>
         <title>Receipt - ${branchName}</title>
         <style>
-          body { font-family: monospace; font-size: 12px; color: #000; padding: 10px; max-width: 300px; margin: auto; text-align: center; }
-          .logo { font-size: 32px; margin-bottom: 5px; }
-          .title { font-weight: bold; font-size: 16px; text-transform: uppercase; margin-bottom: 2px; }
-          .branch { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333; }
-          .divider { border-top: 1px dashed #000; margin: 8px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-          .footer { margin-top: 15px; font-size: 10px; color: #555; border-top: 1px solid #eee; padding-top: 5px; }
+          @page { size: auto; margin: 0mm; }
+          body { 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 11px; 
+            color: #000; 
+            background: #fff; 
+            margin: 0; 
+            padding: 8px; 
+            width: 72mm; /* Standard thermal receipt width */
+            box-sizing: border-box;
+          }
+          .center { text-align: center; }
+          .logo { font-size: 28px; margin-bottom: 2px; }
+          .title { font-weight: bold; font-size: 15px; text-transform: uppercase; margin-bottom: 2px; }
+          .branch { font-size: 13px; font-weight: bold; margin-bottom: 6px; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+          .footer { margin-top: 12px; font-size: 9px; text-align: center; border-top: 1px dotted #000; padding-top: 6px; }
+          @media print {
+            body { width: 100%; padding: 0; }
+            button { display: none; }
+          }
         </style>
       </head>
       <body>
-        <div class="logo">🔥</div>
-        <div class="title">Smart Grill POS</div>
-        <div class="branch">${branchName.toUpperCase()}</div>
-        <div>${contactLines}</div>
-        <div style="margin-top: 5px;">${paymentInfoLines}</div>
+        <div class="center">
+          <div class="logo">🔥</div>
+          <div class="title">Smart Grill POS</div>
+          <div class="branch">${branchName.toUpperCase()}</div>
+          <div>${contactLines}</div>
+          <div style="margin-top: 4px;">${paymentInfoLines}</div>
+        </div>
         
         <div class="divider"></div>
-        <div style="text-align: left; font-size: 10px;">
+        <div style="font-size: 10px;">
           Receipt ID: #${String(orderId).split('-')[0]}<br>
           Date: ${new Date().toLocaleString()}<br>
           Cashier: ${user.full_name || 'Staff'}
@@ -379,8 +404,8 @@ function printBranchReceipt(orderPayload, orderId) {
         <table>
           <thead>
             <tr style="border-bottom: 1px solid #000;">
-              <th style="text-align: left;">Item</th>
-              <th style="text-align: right;">Total</th>
+              <th style="text-align: left; padding-bottom: 3px;">Item</th>
+              <th style="text-align: right; padding-bottom: 3px;">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -389,21 +414,26 @@ function printBranchReceipt(orderPayload, orderId) {
         </table>
 
         <div class="divider"></div>
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
           <span>TOTAL:</span>
           <span>KSh ${orderPayload.total_amount.toFixed(2)}</span>
         </div>
-        <div style="font-size: 11px; margin-top: 4px; text-transform: uppercase;">
+        <div style="font-size: 10px; margin-top: 4px; text-transform: uppercase; text-align: center;">
           Paid via: ${orderPayload.payment_method}
         </div>
 
         <div class="footer">
           <p>Thank you for dining with us!</p>
-          <p style="margin-top: 8px; font-weight: bold;">Powered by HAVYN tech solutions</p>
-          <p>Contact: destinymichael941@gmail.com</p>
+          <p style="margin-top: 4px;">Please come again</p>
         </div>
+
         <script>
-          window.onload = function() { window.print(); window.close(); }
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+              window.close();
+            }, 300);
+          }
         </script>
       </body>
     </html>
