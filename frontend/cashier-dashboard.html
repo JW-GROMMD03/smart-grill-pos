@@ -1,226 +1,252 @@
-<!-- frontend/cashier-dashboard.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Grill — Cashier Terminal</title>
-  
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
-  
-  <script>
-      // 1. SECURITY GUARD: Instantly kicks out unauthorized users
-      if (!localStorage.getItem('sg_token')) {
-          window.location.replace('/index.html');
-      }
-
-      // 2. GLOBAL FETCH INTERCEPTOR: Catches 401/403 errors globally before pos.js can show the "Shift Locked" alert.
-      const originalFetch = window.fetch;
-      window.fetch = async function(...args) {
-          try {
-              const response = await originalFetch.apply(this, args);
-              if (response.status === 401 || response.status === 403) {
-                  localStorage.removeItem('sg_token');
-                  localStorage.removeItem('sg_user');
-                  window.location.replace('/index.html');
-                  return new Promise(() => {});
-              }
-              return response;
-          } catch (error) {
-              throw error;
-          }
-      };
-  </script>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <link rel="stylesheet" href="/assets/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grill - Cashier Point of Sale</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#151f32', 900: '#0f172a', 950: '#020617' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- QR Code Library for Deletion Authorizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body class="h-[100dvh] flex bg-slate-950 overflow-hidden relative">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
 
-  <!-- SECURITY OVERLAY -->
-  <div id="shiftLockoutOverlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[100] hidden flex-col items-center justify-center p-6">
-      <div class="text-7xl mb-4">⛔</div>
-      <h1 class="text-3xl font-black text-red-500 tracking-wider text-center mb-2">ACCESS REVOKED</h1>
-      <p id="lockoutReason" class="text-slate-300 text-center max-w-md font-bold"></p>
-      <p class="text-slate-500 text-xs mt-6">This terminal session has been forcefully terminated.</p>
-  </div>
-
-  <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 hidden lg:hidden"></div>
-
-  <aside id="sidebar" class="w-64 glass-panel border-r border-slate-800 flex flex-col justify-between z-50 absolute inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out">
-    <div class="flex-1 overflow-y-auto">
-      <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center sticky top-0 z-30 shadow-md">
         <div class="flex items-center gap-3">
-          <span class="text-2xl">🔥</span>
-          <div>
-            <h1 class="font-extrabold text-sm tracking-wider text-amber-400">SMART GRILL</h1>
-            <p class="text-[10px] text-slate-500 uppercase tracking-widest">Cashier Terminal</p>
-          </div>
+            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-400 hover:text-white focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🔥</span>
+                <div>
+                    <h1 class="font-black text-sm uppercase tracking-wider text-amber-400">Smart Grill POS</h1>
+                    <p class="text-[10px] text-slate-400" id="cashierBranchLabel">Branch Workstation</p>
+                </div>
+            </div>
         </div>
-        <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white">✕</button>
-      </div>
-      
-      <nav class="p-4 space-y-2">
-        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3 ml-2">Main Menu</p>
-        <button onclick="toggleModal('expensesModal'); if(window.innerWidth < 1024) toggleSidebar();" class="w-full flex items-center gap-3 px-4 py-3 bg-slate-900/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 text-xs font-bold rounded-xl transition border border-transparent hover:border-amber-500/20 text-left">
-          <span class="text-lg">💸</span> Log Expense
-        </button>
-        <button onclick="toggleModal('receiptsModal'); if(window.innerWidth < 1024) toggleSidebar();" class="w-full flex items-center gap-3 px-4 py-3 bg-slate-900/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 text-xs font-bold rounded-xl transition border border-transparent hover:border-amber-500/20 text-left">
-          <span class="text-lg">🧾</span> Shift Ledger
-        </button>
-        <button onclick="toggleModal('holdsModal'); if(window.innerWidth < 1024) toggleSidebar();" class="w-full flex items-center gap-3 px-4 py-3 bg-slate-900/50 hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 text-xs font-bold rounded-xl transition border border-transparent hover:border-amber-500/20 text-left">
-          <span class="text-lg">⏸</span> Held Orders
-        </button>
-      </nav>
-    </div>
 
-    <!-- Shrink-0 ensures the logout button never gets crushed -->
-    <div class="p-4 border-t border-slate-800 shrink-0">
-      <button onclick="localStorage.removeItem('sg_token'); localStorage.removeItem('sg_user'); window.location.href='/index.html'" class="w-full py-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 text-xs font-bold transition flex justify-center items-center gap-2">
-        <span>🚪</span> Secure Logout
-      </button>
-    </div>
-  </aside>
-
-  <!-- Added min-h-0 to wrapper to enforce strict height limits -->
-  <div class="flex-1 flex flex-col min-w-0 min-h-0 h-full relative">
-    <header class="glass-panel px-4 py-3 border-b border-slate-800 flex justify-between items-center z-30 lg:hidden shrink-0">
-      <div class="flex items-center gap-3">
-        <button onclick="toggleSidebar()" class="text-amber-400 text-2xl px-2">☰</button>
-        <h1 class="font-extrabold text-sm tracking-wider text-amber-400">SMART GRILL POS</h1>
-      </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleModal('expensesModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                <span>💸</span> Log Expense
+            </button>
+            <button onclick="toggleModal('receiptsModal')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                <span>📜</span> My Sales & History
+            </button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 py-2 rounded-lg border border-red-500/20 transition">
+                Logout
+            </button>
+        </div>
     </header>
 
-    <!-- Added min-h-0 to the grid main container -->
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 h-full min-h-0 overflow-hidden">
-      <!-- Added min-h-0 to the menu column -->
-      <div class="col-span-1 lg:col-span-8 overflow-y-auto pr-2 pb-20 min-h-0">
-        <div id="dynamicMenuGrid" class="w-full"></div>
-      </div>
+    <!-- MAIN APP LAYOUT -->
+    <div class="flex-1 flex overflow-hidden relative">
 
-      <!-- FIX: Added max-h-full, min-h-0, and overflow-hidden to fully lock the cart panel -->
-      <div class="col-span-1 lg:col-span-4 glass-panel p-5 rounded-2xl flex flex-col shadow-2xl border border-slate-800 h-full max-h-full min-h-0 overflow-hidden">
-        
-        <!-- FIX: Added min-h-0 to the top flex section so it yields space correctly -->
-        <div class="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
-            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Order</h2>
-            <div class="flex gap-2">
-              <button onclick="holdCurrentOrder()" class="text-[10px] bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded font-bold hover:bg-amber-500/20 shadow">Hold</button>
-              <button onclick="requestAdminAction('cart_clear', 'all')" class="text-[10px] bg-red-500/10 text-red-400 px-3 py-1.5 rounded font-bold hover:bg-red-500/20 shadow">Clear</button>
+        <!-- MOBILE SIDEBAR OVERLAY -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden lg:hidden"></div>
+
+        <!-- SIDEBAR (HOLD QUEUE & CONTROLS) -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 w-80 bg-slate-900 border-r border-slate-800 z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="font-extrabold text-xs text-amber-400 uppercase tracking-widest">Hold Queue (Max 6)</h2>
+                <button onclick="holdCurrentOrder()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-2.5 py-1.5 rounded border border-amber-500/30 transition">
+                    + Hold Current Cart
+                </button>
             </div>
-          </div>
-          
-          <!-- FIX: Added min-h-0 to the cart list itself -->
-          <div id="cartList" class="flex-1 overflow-y-auto space-y-2 pr-2 pb-4 min-h-0 custom-scrollbar">
-            <p class="text-slate-500 text-xs text-center py-10">No items selected yet.</p>
-          </div>
-        </div>
+            <div id="holdList" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+                <!-- Held orders populated dynamically -->
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-slate-900/50 text-center">
+                <p class="text-[10px] text-slate-500 font-medium">Powered by HAVYN Tech Solutions</p>
+            </div>
+        </aside>
 
-        <div class="border-t border-slate-800 pt-4 space-y-4 shrink-0">
-          <div class="flex justify-between items-center">
-            <span class="text-sm font-bold text-slate-400">TOTAL AMOUNT</span>
-            <span class="text-2xl font-black text-amber-400">KSh <span id="cartTotal">0.00</span></span>
-          </div>
-          <input type="hidden" id="paymentMethod" value="cash">
-          <div class="grid grid-cols-3 gap-2">
-            <button id="btn-cash" onclick="selectPaymentMethod('cash')" class="pay-btn py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 ring-2 ring-amber-500">💵 Cash</button>
-            <button id="btn-mpesa" onclick="selectPaymentMethod('mpesa')" class="pay-btn py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200">📱 M-Pesa</button>
-            <button id="btn-partial" onclick="selectPaymentMethod('partial')" class="pay-btn py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200">⚖️ Partial</button>
-          </div>
-          <div id="partialFields" class="hidden space-y-2 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+        <!-- CENTER: DYNAMIC MENU CATALOG -->
+        <main class="flex-1 bg-slate-950 overflow-y-auto p-4 lg:p-6">
+            <div class="mb-4">
+                <h2 class="text-sm font-extrabold text-slate-300 uppercase tracking-wide">Menu Catalog</h2>
+                <p class="text-xs text-slate-500">Select items to append to active order cart.</p>
+            </div>
+            
+            <!-- Dynamic Menu Grid Container -->
+            <div id="dynamicMenuGrid" class="space-y-6">
+                <!-- Populated dynamically by pos.js -->
+                <div class="text-center py-12 text-slate-500 text-xs animate-pulse">Loading menu catalog...</div>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL: ACTIVE CART & CHECKOUT -->
+        <aside class="w-full lg:w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full z-10">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Active Order Cart</h2>
+                <button onclick="requestAdminAction('cart_clear', 'all')" class="text-red-400 text-xs hover:underline font-bold">Clear Cart</button>
+            </div>
+
+            <!-- Cart Items List -->
+            <div id="cartList" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <p class="text-slate-500 text-xs text-center py-10">No items selected yet.</p>
+            </div>
+
+            <!-- CART CHECKOUT & PAYMENT CONTROLS -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/90 space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400 font-medium">Grand Total:</span>
+                    <span class="text-amber-400 font-black text-lg">KSh <span id="cartTotal">0.00</span></span>
+                </div>
+
+                <!-- Payment Method Selectors -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Payment Method</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" id="btn-cash" onclick="selectPaymentMethod('cash')" class="pay-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded border border-slate-700 transition ring-2 ring-amber-500">Cash</button>
+                        <button type="button" id="btn-mpesa" onclick="selectPaymentMethod('mpesa')" class="pay-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded border border-slate-700 transition">M-Pesa</button>
+                        <button type="button" id="btn-partial" onclick="selectPaymentMethod('partial')" class="pay-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded border border-slate-700 transition">Partial</button>
+                    </div>
+                    <input type="hidden" id="paymentMethod" value="cash">
+                </div>
+
+                <!-- Partial Payment Subfields -->
+                <div id="partialFields" class="hidden space-y-2 pt-1 border-t border-slate-800">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Cash Amount</label>
+                            <input type="number" id="cashInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">M-Pesa Amount</label>
+                            <input type="number" id="mpesaInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <p id="paymentError" class="text-red-400 text-[11px] hidden font-semibold text-center"></p>
+
+                <button id="checkoutBtn" onclick="submitOrder()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-slate-950 font-black text-sm py-3 rounded-xl transition shadow-lg">
+                    Complete & Print Receipt
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- QUANTITY SELECTION MODAL -->
+    <div id="qtyModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+            <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider" id="qtyItemName">Select Quantity</h3>
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cash Portion</label>
-              <input type="number" id="cashInput" oninput="validatePaymentInputs()" value="0" class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500">
+                <label class="block text-xs text-slate-400 mb-1">Quantity / Portions</label>
+                <select id="qtySelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                    <option value="1">1 Portion / Item</option>
+                    <option value="2">2 Portions / Items</option>
+                    <option value="3">3 Portions / Items</option>
+                    <option value="4">4 Portions / Items</option>
+                    <option value="5">5 Portions / Items</option>
+                    <option value="6">6 Portions / Items</option>
+                    <option value="8">8 Portions / Items</option>
+                    <option value="10">10 Portions / Items</option>
+                </select>
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">M-Pesa Portion</label>
-              <input type="number" id="mpesaInput" oninput="validatePaymentInputs()" value="0" class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500">
+            <div class="flex gap-3 pt-2">
+                <button onclick="toggleModal('qtyModal')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-lg text-xs transition">Cancel</button>
+                <button onclick="confirmQtyAdd()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-lg text-xs transition">Add to Cart</button>
             </div>
-          </div>
-          <div id="paymentError" class="hidden text-[11px] text-red-400 bg-red-500/10 p-2 rounded text-center border border-red-500/20 font-semibold"></div>
-          <button id="checkoutBtn" onclick="submitOrder()" disabled class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition shadow-xl disabled:opacity-40 disabled:cursor-not-allowed">
-            COMPLETE TRANSACTION
-          </button>
         </div>
-      </div>
-    </main>
-  </div>
-
-  <div id="qtyModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
-    <div class="glass-panel p-6 rounded-2xl w-full max-w-xs shadow-2xl border border-slate-700 text-center">
-      <h3 class="font-extrabold text-sm text-slate-300 uppercase mb-4">Select Quantity for <br><span class="text-amber-400 text-lg" id="qtyItemName"></span></h3>
-      <select id="qtySelect" class="w-full bg-slate-900 border border-slate-700 text-amber-400 rounded-lg p-3 mb-6 text-center text-xl font-black focus:outline-none focus:border-amber-500">
-        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-        <option value="10">10</option>
-      </select>
-      <div class="flex gap-2">
-        <button onclick="toggleModal('qtyModal')" class="flex-1 py-3 bg-slate-800 text-slate-300 rounded-lg font-bold hover:bg-slate-700 transition">Cancel</button>
-        <button onclick="confirmQtyAdd()" class="flex-1 py-3 bg-amber-500 text-slate-950 rounded-lg font-black hover:bg-amber-400 transition shadow-lg">ADD</button>
-      </div>
     </div>
-  </div>
 
-  <div id="holdsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
-    <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
-      <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-        <h3 class="font-extrabold text-sm tracking-wider text-slate-200 uppercase">⏸ Held Orders</h3>
-        <button onclick="toggleModal('holdsModal')" class="text-slate-400 hover:text-white bg-slate-800 rounded-full h-8 w-8 flex items-center justify-center font-bold">✕</button>
-      </div>
-      <div id="holdList" class="max-h-[60vh] overflow-y-auto space-y-2 pr-2"></div>
-    </div>
-  </div>
-
-  <div id="receiptsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
-    <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
-      <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-        <h3 class="font-extrabold text-sm tracking-wider text-slate-200 uppercase">🧾 Shift Ledger</h3>
-        <button onclick="toggleModal('receiptsModal')" class="text-slate-400 hover:text-white bg-slate-800 rounded-full h-8 w-8 flex items-center justify-center font-bold">✕</button>
-      </div>
-      <div id="receiptsList" class="max-h-[60vh] overflow-y-auto space-y-2 pr-2"></div>
-    </div>
-  </div>
-
-  <div id="expensesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center z-50">
-    <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700">
-      <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-        <h3 class="font-extrabold text-sm tracking-wider text-slate-200 uppercase">💸 Log Expense</h3>
-        <button onclick="toggleModal('expensesModal')" class="text-slate-400 hover:text-white bg-slate-800 rounded-full h-8 w-8 flex items-center justify-center font-bold">✕</button>
-      </div>
-      <form onsubmit="submitExpense(event)" class="space-y-4 mt-2">
-        <div>
-            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description</label>
-            <input type="text" id="expDesc" required placeholder="e.g. Tomatoes for Kachumbari" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
+    <!-- EXPENSES LOGGING MODAL -->
+    <div id="expensesModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider">Log Operating Expense</h3>
+                <button onclick="toggleModal('expensesModal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+            <form onsubmit="submitExpense(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Description / Reason</label>
+                    <input type="text" id="expDesc" required placeholder="e.g., Charcoal purchase, drinking water..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Amount (KSh) [Max 1,000 KSh]</label>
+                    <input type="number" id="expAmt" required max="1000" placeholder="0.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Payment Source</label>
+                    <select id="expType" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="CASH">Cash Drawer</option>
+                        <option value="MPESA">M-Pesa Account</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition mt-2">Record Expense</button>
+            </form>
         </div>
-        <div>
-            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Amount (Max 1000)</label>
-            <input type="number" id="expAmt" required max="1000" min="1" placeholder="Amount" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500">
-        </div>
-        <div>
-            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Paid Via</label>
-            <select id="expType" class="w-full p-2.5 bg-slate-900 border border-slate-800 rounded text-xs text-white focus:outline-none focus:border-amber-500">
-                <option value="Cash">Cash Drawer</option>
-                <option value="Mpesa">M-Pesa / Till</option>
-            </select>
-        </div>
-        <button type="submit" class="w-full py-3 mt-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded shadow-lg transition">Save Expense</button>
-      </form>
     </div>
-  </div>
 
-  <div id="adminModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center z-50">
-    <div class="glass-panel p-8 rounded-2xl max-w-sm w-full text-center space-y-4 border border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.15)]">
-      <h3 class="font-extrabold text-sm text-slate-200 uppercase tracking-wider">🔒 Admin Authorization</h3>
-      <p class="text-xs text-slate-400">Scan QR or enter the 6-digit code in the Executive App to approve this deletion.</p>
-      <div class="flex justify-center py-4"><div id="adminQrCode" class="p-3 bg-white rounded-xl shadow-inner"></div></div>
-      <p class="text-3xl font-mono font-black tracking-[0.2em] text-amber-400 bg-slate-900 py-3 rounded-lg border border-slate-800" id="adminShortCode"></p>
-      <button onclick="clearInterval(deletePollInterval); toggleModal('adminModal')" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition mt-4">Cancel Request</button>
+    <!-- MY SALES & HISTORY MODAL -->
+    <div id="receiptsModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider">Shift Transactions & Expenses</h3>
+                <button onclick="toggleModal('receiptsModal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+            <div id="receiptsList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                <p class="text-slate-500 text-xs text-center py-8">Loading history...</p>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script src="/assets/js/pos.js?v=1.1"></script>
+    <!-- ADMIN AUTHORIZATION / QR CODE MODAL -->
+    <div id="adminModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl">
+            <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider">Manager Authorization Required</h3>
+            <p class="text-xs text-slate-400">Scan QR code with admin authenticator or provide short code override to approve action.</p>
+            <div id="adminQrCode" class="bg-white p-3 rounded-xl inline-block mx-auto flex justify-center"></div>
+            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Short Verification Code</p>
+                <p id="adminShortCode" class="text-2xl font-black text-amber-400 tracking-widest mt-1">------</p>
+            </div>
+            <button onclick="toggleModal('adminModal'); if(deletePollInterval) clearInterval(deletePollInterval);" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-lg text-xs transition">Cancel Request</button>
+        </div>
+    </div>
+
+    <!-- SHIFT LOCKOUT OVERLAY -->
+    <div id="shiftLockoutOverlay" class="fixed inset-0 bg-slate-950 z-50 hidden flex flex-col items-center justify-center p-6 text-center">
+        <span class="text-6xl mb-4 animate-bounce">🔒</span>
+        <h2 class="text-2xl font-black text-red-400 uppercase tracking-wider mb-2">Workstation Access Revoked</h2>
+        <p class="text-sm text-slate-300 max-w-md mx-auto mb-6" id="lockoutReason">Your session has been restricted by the executive administration.</p>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-xs text-slate-400">
+            <p>Redirecting to login portal shortly...</p>
+        </div>
+    </div>
+
+    <!-- Load Core POS Controller Script -->
+    <script src="/assets/js/pos.js"></script>
+    <script>
+        // Initialize branch label from stored user data
+        document.addEventListener("DOMContentLoaded", () => {
+            const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
+            if(user.branch) {
+                document.getElementById('cashierBranchLabel').innerText = `${user.branch} Workstation`;
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('sg_token');
+            localStorage.removeItem('sg_user');
+            localStorage.removeItem('sg_cart');
+            localStorage.removeItem('sg_holds');
+            window.location.href = '/index.html';
+        }
+    </script>
 </body>
 </html>

@@ -143,76 +143,35 @@ function renderMenuGrid(items) {
   container.innerHTML = `
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
-       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          ${tilapia.map(blockBtn).join('')}
-       </div>
+       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">${tilapia.map(blockBtn).join('')}</div>
     </div>
-
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> MBUTA VARIATIONS</h3>
-       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          ${mbuta.map(blockBtn).join('')}
-       </div>
+       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">${mbuta.map(blockBtn).join('')}</div>
     </div>
-
     <div class="mb-5">
        <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
-             <p class="text-slate-200 text-xs font-bold mb-2">Mbuzi</p>
-             <div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div>
-          </div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
-             <p class="text-slate-200 text-xs font-bold mb-2">Beef</p>
-             <div class="grid grid-cols-3 gap-1.5">${beef.map(inlineBtn).join('')}</div>
-          </div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
-             <p class="text-slate-200 text-xs font-bold mb-2">Chicken</p>
-             <div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div>
-          </div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
-             <p class="text-slate-200 text-xs font-bold mb-2">Bone Soup</p>
-             <div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div>
-          </div>
+          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Mbuzi</p><div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Beef</p><div class="grid grid-cols-3 gap-1.5">${beef.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Chicken</p><div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Bone Soup</p><div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div></div>
        </div>
     </div>
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍲</span> WETFRY</h3>
-           <div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥬</span> GREENS & KACHUMBARI</h3>
-           <div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥔</span> MUKIMO / MATAHA</h3>
-           <div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍛</span> UGALI & TEA</h3>
-           <div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥣</span> OTHERS (SOUP, ETC.)</h3>
-           <div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥤</span> DRINKS & WATER</h3>
-           <div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div>
-        </div>
-        <div>
-           <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🍟</span> CHIPS & PACKAGING</h3>
-           <div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div>
-        </div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍲</span> WETFRY</h3><div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥬</span> GREENS & KACHUMBARI</h3><div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥔</span> MUKIMO / MATAHA</h3><div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍛</span> UGALI & TEA</h3><div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥣</span> OTHERS</h3><div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥤</span> DRINKS & WATER</h3><div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍟</span> CHIPS & PACKAGING</h3><div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div></div>
     </div>
   `;
 }
 
 function triggerQuantityModal(name, category, price) {
   pendingItem = { name, category, price };
-  
   let displayName = name;
   if (category === 'MEAT CUTS') {
       let kgLabel = "1 KG";
@@ -220,7 +179,6 @@ function triggerQuantityModal(name, category, price) {
       else if (price <= 600 || price === 350) kgLabel = "1/2 KG";
       displayName = `${name} (${kgLabel}) (${price}/=)`;
   }
-  
   document.getElementById('qtyItemName').innerText = displayName;
   document.getElementById('qtySelect').value = "1";
   toggleModal('qtyModal');
@@ -248,13 +206,7 @@ function addToCart(name, category, price, qty = 1) {
     existing.quantity += qty;
     existing.subtotal = existing.quantity * existing.unit_price;
   } else {
-    cart.push({
-      item_name: displayName,
-      category: category,
-      unit_price: price,
-      quantity: qty,
-      subtotal: price * qty
-    });
+    cart.push({ item_name: displayName, category: category, unit_price: price, quantity: qty, subtotal: price * qty });
   }
   updateState();
 }
@@ -273,18 +225,11 @@ function renderCart() {
     grandTotal += item.subtotal;
     return `
       <div class="flex justify-between items-center bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs mb-2">
-        <div>
-          <p class="font-bold text-slate-200">${item.item_name}</p>
-          <p class="text-[10px] text-slate-400">${item.quantity} x KSh ${item.unit_price}</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="font-bold text-amber-400">KSh ${item.subtotal}</span>
-          <button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 bg-red-500/10 rounded">✕</button>
-        </div>
+        <div><p class="font-bold text-slate-200">${item.item_name}</p><p class="text-[10px] text-slate-400">${item.quantity} x KSh ${item.unit_price}</p></div>
+        <div class="flex items-center gap-3"><span class="font-bold text-amber-400">KSh ${item.subtotal}</span><button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-400 font-bold px-1.5 py-0.5 bg-red-500/10 rounded">✕</button></div>
       </div>
     `;
   }).join('');
-
   document.getElementById('cartTotal').innerText = grandTotal.toFixed(2);
   validatePaymentInputs();
 }
@@ -292,12 +237,8 @@ function renderCart() {
 function selectPaymentMethod(method) {
   document.getElementById('paymentMethod').value = method;
   const partialFields = document.getElementById('partialFields');
-  
-  if (method === 'partial') {
-    partialFields.classList.remove('hidden');
-  } else {
-    partialFields.classList.add('hidden');
-  }
+  if (method === 'partial') partialFields.classList.remove('hidden');
+  else partialFields.classList.add('hidden');
   
   document.querySelectorAll('.pay-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-amber-500'));
   document.getElementById(`btn-${method}`).classList.add('ring-2', 'ring-amber-500');
@@ -320,10 +261,9 @@ function validatePaymentInputs() {
     const cash = parseFloat(document.getElementById('cashInput').value) || 0;
     const mpesa = parseFloat(document.getElementById('mpesaInput').value) || 0;
     const tally = cash + mpesa;
-
     if (Math.abs(tally - total) > 0.01) {
       checkoutBtn.disabled = true;
-      errorMsg.innerText = `Amounts do not tally! Cash + M-Pesa (${tally}) must equal Total (${total}).`;
+      errorMsg.innerText = `Cash + M-Pesa (${tally}) must equal Total (${total}).`;
       errorMsg.classList.remove('hidden');
     } else {
       checkoutBtn.disabled = false;
@@ -352,15 +292,17 @@ async function submitOrder() {
   try {
     const res = await fetch(`${API_POS}/checkout`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
       body: JSON.stringify(payload)
     });
 
     if (res.ok) {
+      const dataRes = await res.json();
       alert("Order Processed Successfully!");
+      
+      // Trigger Branch Tailored Receipt Printing
+      printBranchReceipt(payload, dataRes.order_id);
+
       cart = [];
       updateState();
     } else {
@@ -370,6 +312,103 @@ async function submitOrder() {
   } catch (e) {
     alert("Network error processing sale.");
   }
+}
+
+// ==========================================
+// DYNAMIC BRANCH-TAILORED RECEIPT GENERATOR
+// ==========================================
+function printBranchReceipt(orderPayload, orderId) {
+  const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
+  const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
+  const lowerBranch = branchName.toLowerCase();
+
+  let contactLines = "";
+  let paymentInfoLines = "";
+
+  if (lowerBranch.includes("smartgrill") || lowerBranch.includes("smart grill")) {
+    contactLines = "Contacts: 0700041003 / 0759960035<br>Email: smartgrill2026@gmail.com";
+    paymentInfoLines = "M-Pesa Till: <strong>4325536</strong>";
+  } else if (lowerBranch.includes("nyama villa")) {
+    contactLines = "Contacts: 0700041003 / 0140 139 181";
+    paymentInfoLines = "Pochi la Biashara: <strong>0140 139 181</strong>";
+  } else if (lowerBranch.includes("smart kitchen")) {
+    contactLines = "Contacts: 0700-041003 / 0104-041003";
+    paymentInfoLines = ""; // Leaves payment/other info clean as requested
+  } else {
+    contactLines = "";
+    paymentInfoLines = "";
+  }
+
+  const itemsHtml = orderPayload.items.map(i => `
+    <tr style="border-bottom: 1px dashed #ddd;">
+      <td style="padding: 4px 0; text-align: left;">${i.item_name} (x${i.quantity})</td>
+      <td style="padding: 4px 0; text-align: right;">KSh ${i.subtotal.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const receiptWindow = window.open('', '_blank', 'width=400,height=600');
+  receiptWindow.document.write(`
+    <html>
+      <head>
+        <title>Receipt - ${branchName}</title>
+        <style>
+          body { font-family: monospace; font-size: 12px; color: #000; padding: 10px; max-width: 300px; margin: auto; text-align: center; }
+          .logo { font-size: 32px; margin-bottom: 5px; }
+          .title { font-weight: bold; font-size: 16px; text-transform: uppercase; margin-bottom: 2px; }
+          .branch { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333; }
+          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+          .footer { margin-top: 15px; font-size: 10px; color: #555; border-top: 1px solid #eee; padding-top: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="logo">🔥</div>
+        <div class="title">Smart Grill POS</div>
+        <div class="branch">${branchName.toUpperCase()}</div>
+        <div>${contactLines}</div>
+        <div style="margin-top: 5px;">${paymentInfoLines}</div>
+        
+        <div class="divider"></div>
+        <div style="text-align: left; font-size: 10px;">
+          Receipt ID: #${String(orderId).split('-')[0]}<br>
+          Date: ${new Date().toLocaleString()}<br>
+          Cashier: ${user.full_name || 'Staff'}
+        </div>
+        
+        <div class="divider"></div>
+        <table>
+          <thead>
+            <tr style="border-bottom: 1px solid #000;">
+              <th style="text-align: left;">Item</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="divider"></div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+          <span>TOTAL:</span>
+          <span>KSh ${orderPayload.total_amount.toFixed(2)}</span>
+        </div>
+        <div style="font-size: 11px; margin-top: 4px; text-transform: uppercase;">
+          Paid via: ${orderPayload.payment_method}
+        </div>
+
+        <div class="footer">
+          <p>Thank you for dining with us!</p>
+          <p style="margin-top: 8px; font-weight: bold;">Powered by HAVYN tech solutions</p>
+          <p>Contact: destinymichael941@gmail.com</p>
+        </div>
+        <script>
+          window.onload = function() { window.print(); window.close(); }
+        </script>
+      </body>
+    </html>
+  `);
+  receiptWindow.document.close();
 }
 
 function holdCurrentOrder() {
@@ -407,10 +446,7 @@ function renderHoldQueue() {
 }
 
 function resumeHold(index) {
-  if(cart.length > 0) {
-    alert("Please clear or hold the current cart first.");
-    return;
-  }
+  if(cart.length > 0) return alert("Please clear or hold the current cart first.");
   cart = holdQueue[index].items;
   holdQueue.splice(index, 1);
   updateState();
@@ -422,10 +458,7 @@ async function submitExpense(e) {
   const amt = parseFloat(document.getElementById('expAmt').value);
   const type = document.getElementById('expType').value;
 
-  if (amt > 1000) {
-    alert("Error: Single expenses cannot exceed 1000 KSh.");
-    return;
-  }
+  if (amt > 1000) return alert("Error: Single expenses cannot exceed 1000 KSh.");
   
   try {
     const res = await fetch(`${API_POS}/expense`, {
@@ -438,7 +471,7 @@ async function submitExpense(e) {
       alert("Expense logged successfully."); 
       document.getElementById('expDesc').value = '';
       document.getElementById('expAmt').value = '';
-      loadReceipts(); 
+      toggleModal('expensesModal');
     } else {
       const err = await res.json();
       alert(`Error: ${err.detail}`);
@@ -457,7 +490,6 @@ async function loadReceipts() {
     const container = document.getElementById('receiptsList');
     
     let html = `<h4 class="text-xs font-bold text-slate-400 mb-2 border-b border-slate-800 pb-1">SALES (${data.transactions.length})</h4>`;
-    
     if (data.transactions.length === 0) html += `<p class="text-slate-600 text-xs mb-4">No sales recorded yet.</p>`;
     
     html += data.transactions.map(t => `
@@ -471,7 +503,6 @@ async function loadReceipts() {
     `).join('');
     
     html += `<h4 class="text-xs font-bold text-slate-400 mt-6 mb-2 border-b border-slate-800 pb-1">EXPENSES (${data.expenses.length})</h4>`;
-    
     if (data.expenses.length === 0) html += `<p class="text-slate-600 text-xs">No expenses recorded yet.</p>`;
     
     html += data.expenses.map(ex => `
@@ -496,28 +527,18 @@ async function executeExpenseDelete(id) {
       method: 'DELETE', 
       headers: { 'Authorization': `Bearer ${getAuthToken()}` } 
     });
-    if(res.ok) {
-      loadReceipts();
-    } else {
-      alert("Failed to delete expense.");
-    }
-  } catch(e) {
-    alert("Network error.");
-  }
+    if(res.ok) { loadReceipts(); } else { alert("Failed to delete expense."); }
+  } catch(e) { alert("Network error."); }
 }
 
 async function requestAdminAction(actionType, targetId) {
   if (actionType === 'cart_clear' && cart.length === 0) return;
-
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   
   try {
     const res = await fetch(`${API_POS}/request-delete-qr`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
       body: JSON.stringify({ target_id: targetId.toString(), cashier_id: user.id || "00000000-0000-0000-0000-000000000000" })
     });
 
@@ -532,7 +553,7 @@ async function requestAdminAction(actionType, targetId) {
       openAdminModal(data.qr_token, data.short_code, actionType, targetId);
     }
   } catch (e) {
-    alert("Could not request authorization. Please check network connection.");
+    alert("Could not request authorization.");
   }
 }
 
