@@ -61,7 +61,7 @@ class ShiftEngine:
         return curr_shift, curr_bdate, False
 
     @staticmethod
-    fn calculate_current_shift() -> tuple[str, str]:
+    def calculate_current_shift() -> tuple[str, str]:
         (curr_shift, curr_bdate), _, _ = ShiftEngine.get_shift_context()
         return curr_shift, curr_bdate
 
