@@ -22,9 +22,9 @@ from app.core.config import settings
 router = APIRouter()
 serializer = URLSafeTimedSerializer(settings.JWT_SECRET)
 
-# ==========================================
-# SHIFT OVERLAP & PERMIT CONTROL
-# ==========================================
+# =================================================
+# SHIFT OVERLAP & PERMIT CONTROL IN THE ADMIN PANEL
+# =================================================
 
 class ShiftPermitRequest(BaseModel):
     permit_type: str  
@@ -35,12 +35,13 @@ class ShiftForceRequest(BaseModel):
     shift: str  
 
 @router.get("/shift/status")
-async def get_shift_status(admin=Depends(SecurityEngine.verify_token)):
+async def get_shift_status(branch: str = "Smartgrill", admin=Depends(SecurityEngine.verify_token)):
     """Returns the current clock shift, system active shift, permits, and forced overrides."""
-    (clock_shift, clock_bdate), _, in_grace = ShiftEngine.get_shift_context()
-    eff_shift, eff_bdate, is_overridden = await ShiftEngine.get_effective_shift_context()
+    # Pass branch_id to both engine methods
+    (clock_shift, clock_bdate), _, in_grace = ShiftEngine.get_shift_context(branch_id=branch)
+    eff_shift, eff_bdate, is_overridden = await ShiftEngine.get_effective_shift_context(branch_id=branch)
     
-    active_shift_id = await redis_client.get("system:active_shift")
+    active_shift_id = await redis_client.get(f"system:active_shift:{branch}") or await redis_client.get("system:active_shift")
     if isinstance(active_shift_id, bytes):
         active_shift_id = active_shift_id.decode('utf-8')
 
@@ -59,7 +60,8 @@ async def get_shift_status(admin=Depends(SecurityEngine.verify_token)):
         "active_shift_id": active_shift_id,
         "permit": active_permit,
         "override": active_override,
-        "is_overridden": is_overridden
+        "is_overridden": is_overridden,
+        "branch": branch
     }
 
 @router.post("/shift/permit")
@@ -945,11 +947,17 @@ async def get_deep_analytics(
 
 @router.post("/cashiers/register")
 async def register_cashier(
-    full_name: str, username: str, pin: str, assigned_shift: str, branch: str,
+    full_name: str, 
+    username: str, 
+    pin: str, 
+    assigned_shift: str, 
+    branch: Optional[str] = "Smartgrill",
     admin=Depends(SecurityEngine.verify_token)
 ):
+    target_branch = branch if branch else "Smartgrill"
     valid_branches = ["Smartgrill", "nyama villa", "Smart kitchen", "Smart Resort", "Smart Villa"]
-    if branch not in valid_branches:
+    
+    if target_branch not in valid_branches:
         raise HTTPException(status_code=400, detail="Invalid branch selected.")
         
     try:
@@ -959,7 +967,7 @@ async def register_cashier(
             "username": username, 
             "pin_hash": pin_hash, 
             "assigned_shift": assigned_shift,
-            "branch": branch,  # Saved to database
+            "branch": target_branch,  # Saved to database
             "status": "ACTIVE"
         }).execute()
         return {"status": "success"}

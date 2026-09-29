@@ -41,7 +41,7 @@ class ShiftEngine:
         return (current_shift, current_bdate), (prev_shift, prev_bdate), in_grace
 
     @staticmethod
-    async def get_effective_shift_context(branch_id: str, now: datetime = None) -> tuple[str, str, bool]:
+    async def get_effective_shift_context(branch_id: str = "Smartgrill", now: datetime = None) -> tuple[str, str, bool]:
         """Fetches current active shift considering branch overrides and admin permits."""
         override_raw = await redis_client.get(f"system:shift_override:{branch_id}")
         if override_raw:
