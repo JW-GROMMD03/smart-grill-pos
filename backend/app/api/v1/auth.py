@@ -46,7 +46,8 @@ async def login(credentials: LoginSchema, request: Request):
         if not user:
             raise ValueError("Invalid user object")
 
-        profile_res = supabase.table("profiles").select("role, full_name, branch").eq("id", user.id).execute()
+        # Removed "branch" from the query to prevent errors on the profiles table
+        profile_res = supabase.table("profiles").select("role, full_name").eq("id", user.id).execute()
         user_data = profile_res.data[0] if profile_res.data else {}
 
         if user_data.get("role") != "admin":
@@ -55,14 +56,15 @@ async def login(credentials: LoginSchema, request: Request):
         await SecurityEngine.reset_attempts(client_identifier)
 
         otp = str(random.randint(100000, 999999))
+        # Assign "All" branch access globally for the executive overseer
         token = SecurityEngine.create_access_token({
-            "sub": user.id, "email": user.email, "role": "admin", "branch": user_data.get("branch")
+            "sub": user.id, "email": user.email, "role": "admin", "branch": "All"
         })
 
         payload = {
             "id": user.id, "email": user.email, 
             "full_name": user_data.get("full_name", "Admin"), 
-            "role": "admin", "token": token, "branch": user_data.get("branch")
+            "role": "admin", "token": token, "branch": "All"
         }
         
         await redis_client.setex(f"otp:{credentials.email}:{otp}", 300, json.dumps(payload))
@@ -76,6 +78,7 @@ async def login(credentials: LoginSchema, request: Request):
             raise HTTPException(status_code=401, detail="Invalid executive credentials.")
         raise HTTPException(status_code=401, detail=str(e))
 
+    
 @router.post("/verify-otp", response_model=UserResponse)
 async def verify_otp(payload: OTPVerifySchema):
     cache_key = f"otp:{payload.email}:{payload.otp}"
