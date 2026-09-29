@@ -16,8 +16,8 @@ router = APIRouter()
 @router.get("/menu")
 @router.get("/menu/")
 async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
-    branch_id = user.get("branch_id", "branch_1")
-    cache_key = f"cache:menu_v4:{branch_id}"
+    branch = user.get("branch", "Smartgrill")
+    cache_key = f"cache:menu_v4:{branch}"
     cached_menu = await redis_client.get(cache_key)
     
     if cached_menu:
@@ -26,7 +26,8 @@ async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
         parsed_cache = json.loads(cached_menu)
         if parsed_cache and len(parsed_cache) > 0:
             return parsed_cache
-    res = supabase.table("menu_items").select("*").eq("branch", branch_id).eq("is_active", True).execute()
+            
+    res = supabase.table("menu_items").select("*").eq("branch", branch).eq("is_active", True).execute()
     menu_data = res.data or []
     
     if menu_data and len(menu_data) > 0:
@@ -43,13 +44,14 @@ async def process_checkout(
 ):
     cashier_id = user.get("sub")
     assigned_shift = user.get("shift")
-    branch = user.get("branch")
+    branch = user.get("branch", "Smartgrill")
 
     active_shift, business_date = await ShiftEngine.validate_shift_access(
-        cashier_id, 
-        assigned_shift, 
-        background_tasks, 
-        ReportEngine.generate_and_email_shift_report
+        cashier_id=cashier_id, 
+        assigned_shift=assigned_shift, 
+        branch_id=branch,
+        background_tasks=background_tasks, 
+        report_func=ReportEngine.generate_and_email_shift_report
     )
 
     if order.payment_method.lower() == "partial":
@@ -59,7 +61,7 @@ async def process_checkout(
     try:
         sale_res = supabase.table("sales").insert({
             "cashier_id": cashier_id,
-            "branch": branch,  # --- ADDED BRANCH COLUMN ---
+            "branch": branch,
             "payment_type": order.payment_method.upper(),
             "payment_method": order.payment_method.upper(),
             "cash_amount": order.cash_amount if order.payment_method.lower() in ['cash', 'partial'] else 0.0,
@@ -105,38 +107,37 @@ async def record_cashier_expense(expense: ExpenseSchema, user: dict = Depends(Se
         raise HTTPException(status_code=400, detail="Expenses cannot exceed 1000 KSh.")
 
     cashier_id = user.get("sub")
-    branch = user.get("branch")
-    current_shift, business_date = ShiftEngine.calculate_current_shift()
+    branch = user.get("branch", "Smartgrill")
+    current_shift, business_date = ShiftEngine.calculate_current_shift(branch_id=branch)
 
     res = supabase.table("expenses").insert({
         "description": expense.description,
         "amount": expense.amount,
         "payment_type": expense.payment_type.upper(),
         "recorded_by": cashier_id,
-        "branch": branch,  # --- ADDED BRANCH COLUMN ---
+        "branch": branch,
         "shift": current_shift,
         "business_date": business_date
     }).execute()
 
     return {"status": "success", "data": res.data[0]}
 
-
 @router.get("/my-sales")
 @router.get("/my-sales/")
 async def get_my_sales(user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
-    branch_id = user.get("branch_id", "branch_1")
-    current_shift, business_date = ShiftEngine.calculate_current_shift()
+    branch = user.get("branch", "Smartgrill")
+    current_shift, business_date = ShiftEngine.calculate_current_shift(branch_id=branch)
 
-    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("branch", branch_id).eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
-    expenses_res = supabase.table("expenses").select("*").eq("branch", branch_id).eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
+    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("branch", branch).eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
+    expenses_res = supabase.table("expenses").select("*").eq("branch", branch).eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
 
     cash_total = sum(s["cash_amount"] for s in sales_res.data)
     mpesa_total = sum(s["mpesa_amount"] for s in sales_res.data)
 
     return {
         "cashier_id": cashier_id,
-        "branch_id": branch_id,
+        "branch": branch,
         "shift": current_shift,
         "business_date": business_date,
         "summary": {
@@ -148,19 +149,17 @@ async def get_my_sales(user: dict = Depends(SecurityEngine.verify_token)):
         "expenses": expenses_res.data
     }
 
-
-
 @router.delete("/expense/{expense_id}")
 @router.delete("/expense/{expense_id}/")
 async def delete_expense(expense_id: str, user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
-    branch_id = user.get("branch_id", "branch_1")
+    branch = user.get("branch", "Smartgrill")
     try:
-        supabase.table("expenses").delete().eq("id", expense_id).eq("branch_id", branch_id).eq("recorded_by", cashier_id).execute()
+        supabase.table("expenses").delete().eq("id", expense_id).eq("branch", branch).eq("recorded_by", cashier_id).execute()
         
-        for key in await redis_client.keys(f"dashboard:analytics:{branch_id}:*"):
+        for key in await redis_client.keys(f"dashboard:analytics:{branch}:*"):
             await redis_client.delete(key)
-        for key in await redis_client.keys(f"smartgrill:deep_bi:{branch_id}:*"):
+        for key in await redis_client.keys(f"smartgrill:deep_bi:{branch}:*"):
             await redis_client.delete(key)
 
         return {"status": "success", "message": "Expense deleted."}
@@ -171,14 +170,14 @@ async def delete_expense(expense_id: str, user: dict = Depends(SecurityEngine.ve
 @router.post("/request-delete-qr/")
 async def request_delete_qr(payload: QRDeleteRequestSchema, user: dict = Depends(SecurityEngine.verify_token)):
     cashier_id = user.get("sub")
-    branch_id = user.get("branch_id", "branch_1")
+    branch = user.get("branch", "Smartgrill")
     qr_token = f"SG-DEL-{uuid.uuid4().hex[:12].upper()}"
     short_code = ''.join(random.choices(string.digits, k=6))
     
     cache_data = json.dumps({
         "target_id": payload.target_id,
         "cashier_id": cashier_id,
-        "branch_id": branch_id,
+        "branch": branch,
         "short_code": short_code,
         "status": "pending"
     })

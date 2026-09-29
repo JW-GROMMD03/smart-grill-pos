@@ -57,12 +57,12 @@ class ShiftEngine:
                     bdate = str(now_dt.date() - timedelta(days=1))
                 return forced_shift, bdate, True
 
-        (curr_shift, curr_bdate), _, _ = ShiftEngine.get_shift_context(now)
+        (curr_shift, curr_bdate), _, _ = ShiftEngine.get_shift_context(branch_id, now)
         return curr_shift, curr_bdate, False
 
     @staticmethod
-    def calculate_current_shift() -> tuple[str, str]:
-        (curr_shift, curr_bdate), _, _ = ShiftEngine.get_shift_context()
+    def calculate_current_shift(branch_id: str = "Smartgrill") -> tuple[str, str]:
+        (curr_shift, curr_bdate), _, _ = ShiftEngine.get_shift_context(branch_id)
         return curr_shift, curr_bdate
 
     @staticmethod
@@ -97,7 +97,7 @@ class ShiftEngine:
                 permit_raw = permit_raw.decode('utf-8')
             active_permit = json.loads(permit_raw)
 
-        (curr_shift, curr_bdate), (prev_shift, prev_bdate), in_grace = ShiftEngine.get_shift_context()
+        (curr_shift, curr_bdate), (prev_shift, prev_bdate), in_grace = ShiftEngine.get_shift_context(branch_id)
         curr_id = f"{branch_id}-{curr_bdate}-{curr_shift}"
         prev_id = f"{branch_id}-{prev_bdate}-{prev_shift}"
 
