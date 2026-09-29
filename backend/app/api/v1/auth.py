@@ -117,33 +117,14 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
     await SecurityEngine.check_rate_limit(client_identifier)
 
     try:
+        # 1. Fetch user by username
         res = supabase.table("cashiers").select("*").eq("username", credentials.username).execute()
         if not res.data:
             raise ValueError("Invalid credentials")
         
         cashier = res.data[0]
         
-        # --- MAXIMUM SECURITY BRANCH VALIDATION ---
-        db_branch = str(cashier.get("branch") or "").strip().lower()
-        req_branch = str(credentials.branch or "").strip().lower()
-        
-        # 1. Ensure database has a registered branch
-        if not db_branch:
-            raise HTTPException(status_code=403, detail="SECURITY LOCK: Account has no assigned branch configuration.")
-            
-        # 2. Ensure frontend request provided a branch
-        if not req_branch:
-            raise HTTPException(status_code=403, detail="SECURITY LOCK: Terminal branch selection is required.")
-            
-        # 3. Absolute mismatch rejection
-        if db_branch != req_branch:
-            await SecurityEngine.record_failed_attempt(client_identifier)
-            raise HTTPException(
-                status_code=403, 
-                detail=f"ACCESS DENIED: Account is registered to branch '{cashier.get('branch')}', not '{credentials.branch}'."
-            )
-        # -------------------------------------------
-
+        # 2. Strict Account Status Checks (Deleted / Blocked)
         status = str(cashier.get("status") or "ACTIVE").strip().upper()
         if status == "DELETED":
             raise ValueError("Invalid credentials")
@@ -152,6 +133,18 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
             reason = cashier.get("block_reason") or "Account suspended. Contact Admin."
             raise HTTPException(status_code=403, detail=f"ACCESS DENIED: {reason}")
 
+        # 3. UNIFIED SECURITY CHECK: Password + Branch Validation
+        db_branch = str(cashier.get("branch") or "").strip().lower()
+        req_branch = str(credentials.branch or "").strip().lower()
+        
+        password_matches = SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"])
+        branch_matches = (db_branch and req_branch and db_branch == req_branch)
+
+        # If either password or branch fails, trigger the unified security exception
+        if not password_matches or not branch_matches:
+            raise ValueError("Invalid credentials")
+
+        # 4. Shift validation
         assigned_shift = str(cashier.get("assigned_shift", "Day")).strip().upper()
         if assigned_shift in ["DAY SHIFT", "DAY_SHIFT"]:
             assigned_shift = "DAY"
@@ -159,9 +152,6 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
             assigned_shift = "NIGHT"
 
         await ShiftEngine.validate_shift_access(cashier["id"], assigned_shift, branch_id=cashier.get("branch"))
-
-        if not SecurityEngine.verify_password(credentials.pin, cashier["pin_hash"]):
-            raise ValueError("Invalid credentials")
 
         await SecurityEngine.reset_attempts(client_identifier)
 
@@ -183,7 +173,8 @@ async def cashier_login(credentials: CashierLoginSchema, request: Request):
         }
     except ValueError:
         await SecurityEngine.record_failed_attempt(client_identifier)
-        raise HTTPException(status_code=401, detail="Invalid username or PIN.")
+        # Unified error message hiding whether the username, password, or branch was incorrect
+        raise HTTPException(status_code=401, detail="Invalid username, password or branch.")
     except HTTPException as he:
         raise he
     except Exception as e:
