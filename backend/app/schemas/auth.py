@@ -25,3 +25,4 @@ class CashierLoginSchema(BaseModel):
     username: str
     pin: str
     branch: str
+    branch: Optional[str] = "Smartgrill"
