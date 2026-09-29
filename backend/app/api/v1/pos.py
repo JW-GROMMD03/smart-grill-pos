@@ -26,8 +26,7 @@ async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
         parsed_cache = json.loads(cached_menu)
         if parsed_cache and len(parsed_cache) > 0:
             return parsed_cache
-    
-    res = supabase.table("menu_items").select("*").eq("branch_id", branch_id).eq("is_active", True).execute()
+    res = supabase.table("menu_items").select("*").eq("branch", branch_id).eq("is_active", True).execute()
     menu_data = res.data or []
     
     if menu_data and len(menu_data) > 0:
@@ -129,8 +128,8 @@ async def get_my_sales(user: dict = Depends(SecurityEngine.verify_token)):
     branch_id = user.get("branch_id", "branch_1")
     current_shift, business_date = ShiftEngine.calculate_current_shift()
 
-    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("branch_id", branch_id).eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
-    expenses_res = supabase.table("expenses").select("*").eq("branch_id", branch_id).eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
+    sales_res = supabase.table("sales").select("*, sale_items(*)").eq("branch", branch_id).eq("cashier_id", cashier_id).eq("business_date", business_date).execute()
+    expenses_res = supabase.table("expenses").select("*").eq("branch", branch_id).eq("recorded_by", cashier_id).eq("business_date", business_date).execute()
 
     cash_total = sum(s["cash_amount"] for s in sales_res.data)
     mpesa_total = sum(s["mpesa_amount"] for s in sales_res.data)
