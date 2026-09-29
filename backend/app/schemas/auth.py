@@ -24,5 +24,4 @@ class UserResponse(BaseModel):
 class CashierLoginSchema(BaseModel):
     username: str
     pin: str
-    branch: str
-    branch: Optional[str] = "Smartgrill"
+    branch: str  # Only defined ONCE, and perfectly strictly!
