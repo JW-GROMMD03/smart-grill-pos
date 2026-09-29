@@ -7,7 +7,7 @@ from app.core.redis import redis_client
 
 class ShiftEngine:
     @staticmethod
-    def get_shift_context(now: datetime = None):
+    def get_shift_context(branch_id: str = "Smartgrill", now: datetime = None):
         if not now:
             tz = pytz.timezone('Africa/Nairobi')
             now = datetime.now(tz)
