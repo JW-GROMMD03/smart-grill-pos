@@ -58,7 +58,6 @@ function updateState() {
   renderCart();
   renderHoldQueue();
   
-  // Update mobile cart item badge count
   const badge = document.getElementById('mobileCartCount');
   if(badge) {
       const totalCount = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -283,6 +282,13 @@ function validatePaymentInputs() {
 }
 
 async function submitOrder() {
+  const printerConfig = localStorage.getItem('sg_printer_config');
+  if (!printerConfig) {
+      alert("⚠️ No thermal printer detected! Please configure your receipt printer in settings before completing checkout.");
+      toggleModal('printerModal');
+      return;
+  }
+
   const total = parseFloat(document.getElementById('cartTotal').innerText);
   const method = document.getElementById('paymentMethod').value;
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -307,7 +313,6 @@ async function submitOrder() {
       const dataRes = await res.json();
       alert("Order Processed Successfully!");
       
-      // Trigger Thermal Printer Compatible Receipt Print
       printBranchReceipt(payload, dataRes.order_id);
 
       cart = [];
@@ -322,38 +327,47 @@ async function submitOrder() {
 }
 
 // =======================================================
-// THERMAL PRINTER COMPATIBLE RECEIPT GENERATOR & PRINTER
+// STANDARD SUPERMARKET-STYLE THERMAL RECEIPT GENERATOR
 // =======================================================
 function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
   const lowerBranch = branchName.toLowerCase();
+  const printerConfig = JSON.parse(localStorage.getItem('sg_printer_config') || '{"width":"80mm"}');
 
   let contactLines = "";
   let paymentInfoLines = "";
 
   if (lowerBranch.includes("smartgrill") || lowerBranch.includes("smart grill")) {
-    contactLines = "Contacts: 0700041003 / 0759960035<br>Email: smartgrill2026@gmail.com";
-    paymentInfoLines = "M-Pesa Till Number: <strong>4325536</strong>";
+    contactLines = "Tel: 0700041003 / 0759960035<br>Email: smartgrill2026@gmail.com";
+    paymentInfoLines = "M-Pesa Till No: <strong>4325536</strong>";
   } else if (lowerBranch.includes("nyama villa")) {
-    contactLines = "Contacts: 0700041003 / 0140 139 181";
+    contactLines = "Tel: 0700041003 / 0140 139 181";
     paymentInfoLines = "Pochi la Biashara: <strong>0140 139 181</strong>";
   } else if (lowerBranch.includes("smart kitchen")) {
-    contactLines = "Contacts: 0700-041003 / 0104-041003";
+    contactLines = "Tel: 0700-041003 / 0104-041003";
     paymentInfoLines = ""; 
   } else {
     contactLines = "";
     paymentInfoLines = "";
   }
 
-  const itemsHtml = orderPayload.items.map(i => `
-    <tr>
-      <td style="padding: 5px 0; text-align: left; word-break: break-word;">${i.item_name} (x${i.quantity})</td>
-      <td style="padding: 5px 0; text-align: right; white-space: nowrap;">KSh ${i.subtotal.toFixed(2)}</td>
+  // Standard Supermarket item row breakdown (Description on row 1, Qty x Price ... Total on row 2)
+  const itemsHtml = orderPayload.items.map((i, idx) => `
+    <tr style="border-bottom: 1px dotted #bbb;">
+      <td colspan="2" style="padding-top: 5px; font-weight: bold; text-align: left;">${idx + 1}. ${i.item_name}</td>
+    </tr>
+    <tr style="border-bottom: 1px dashed #ddd; padding-bottom: 4px;">
+      <td style="padding-bottom: 4px; text-align: left; color: #333; font-size: 10px; padding-left: 10px;">
+        ${i.quantity} @ ${i.unit_price.toFixed(2)}
+      </td>
+      <td style="padding-bottom: 4px; text-align: right; font-weight: bold; font-size: 11px;">
+        KSh ${i.subtotal.toFixed(2)}
+      </td>
     </tr>
   `).join('');
 
-  const receiptWindow = window.open('', '_blank', 'width=350,height=600');
+  const receiptWindow = window.open('', '_blank', 'width=420,height=700');
   receiptWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -367,45 +381,81 @@ function printBranchReceipt(orderPayload, orderId) {
             color: #000; 
             background: #fff; 
             margin: 0; 
-            padding: 8px; 
-            width: 72mm; /* Standard thermal receipt width */
+            padding: 10px; 
+            width: ${printerConfig.width === '58mm' ? '56mm' : '72mm'}; 
             box-sizing: border-box;
           }
+          .action-toolbar {
+            background: #0f172a;
+            color: #fff;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px;
+            margin-bottom: 12px;
+          }
+          .action-toolbar button {
+            background: #f59e0b;
+            color: #020617;
+            font-weight: bold;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+          }
+          .action-toolbar button.secondary {
+            background: #334155;
+            color: #f8fafc;
+          }
           .center { text-align: center; }
-          .logo { font-size: 28px; margin-bottom: 2px; }
-          .title { font-weight: bold; font-size: 15px; text-transform: uppercase; margin-bottom: 2px; }
-          .branch { font-size: 13px; font-weight: bold; margin-bottom: 6px; }
+          .title { font-weight: bold; font-size: 16px; text-transform: uppercase; margin-bottom: 2px; }
+          .branch { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
           .divider { border-top: 1px dashed #000; margin: 6px 0; }
           table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-          .footer { margin-top: 12px; font-size: 9px; text-align: center; border-top: 1px dotted #000; padding-top: 6px; }
+          .totals-table { width: 100%; margin-top: 6px; font-size: 12px; }
+          .totals-table td { padding: 2px 0; }
+          .barcode { text-align: center; font-family: 'Libre Barcode 39', monospace; font-size: 36px; letter-spacing: 2px; margin-top: 8px; }
+          .footer { margin-top: 10px; font-size: 10px; text-align: center; border-top: 1px dotted #000; padding-top: 6px; }
           @media print {
-            body { width: 100%; padding: 0; }
-            button { display: none; }
+            .action-toolbar { display: none !important; }
+            body { width: 100%; padding: 0; margin: 0; }
           }
         </style>
       </head>
       <body>
+        <!-- Action Toolbar with Print and Settings Buttons -->
+        <div class="action-toolbar">
+          <span style="font-size: 11px;">🖨️ Thermal Ready</span>
+          <div style="display: flex; gap: 6px;">
+            <button class="secondary" onclick="window.opener.toggleModal('printerModal'); window.close();">⚙ Settings</button>
+            <button onclick="window.print()">🖨️ Print Receipt</button>
+          </div>
+        </div>
+
         <div class="center">
-          <div class="logo">🔥</div>
-          <div class="title">Smart Grill POS</div>
-          <div class="branch">${branchName.toUpperCase()}</div>
-          <div>${contactLines}</div>
-          <div style="margin-top: 4px;">${paymentInfoLines}</div>
+          <div style="font-size: 24px; margin-bottom: 2px;">🔥</div>
+          <div class="title">SMART GRILL POS</div>
+          <div class="branch">${branchName}</div>
+          <div style="font-size: 10px;">${contactLines}</div>
+          <div style="font-size: 11px; margin-top: 3px;">${paymentInfoLines}</div>
         </div>
         
         <div class="divider"></div>
-        <div style="font-size: 10px;">
-          Receipt ID: #${String(orderId).split('-')[0]}<br>
-          Date: ${new Date().toLocaleString()}<br>
-          Cashier: ${user.full_name || 'Staff'}
+        <div style="font-size: 10px; line-height: 1.4;">
+          <strong>CASH SALE TICKET</strong><br>
+          Receipt # : <strong>${String(orderId).toUpperCase()}</strong><br>
+          Date    : ${new Date().toLocaleString()}<br>
+          Cashier : ${user.full_name || 'Staff'}
         </div>
         
         <div class="divider"></div>
         <table>
           <thead>
-            <tr style="border-bottom: 1px solid #000;">
-              <th style="text-align: left; padding-bottom: 3px;">Item</th>
-              <th style="text-align: right; padding-bottom: 3px;">Total</th>
+            <tr style="border-bottom: 1px solid #000; font-size: 10px;">
+              <th style="text-align: left; padding-bottom: 3px;">DESCRIPTION</th>
+              <th style="text-align: right; padding-bottom: 3px;">AMOUNT</th>
             </tr>
           </thead>
           <tbody>
@@ -414,24 +464,33 @@ function printBranchReceipt(orderPayload, orderId) {
         </table>
 
         <div class="divider"></div>
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
-          <span>TOTAL:</span>
-          <span>KSh ${orderPayload.total_amount.toFixed(2)}</span>
-        </div>
-        <div style="font-size: 10px; margin-top: 4px; text-transform: uppercase; text-align: center;">
-          Paid via: ${orderPayload.payment_method}
-        </div>
+        <table class="totals-table">
+          <tr>
+            <td style="text-align: left;">ITEMS COUNT:</td>
+            <td style="text-align: right; font-weight: bold;">${orderPayload.items.reduce((acc, i) => acc + i.quantity, 0)}</td>
+          </tr>
+          <tr style="font-weight: bold; font-size: 14px; border-top: 1px solid #000; border-bottom: 1px solid #000;">
+            <td style="padding: 4px 0;">TOTAL DUE:</td>
+            <td style="text-align: right; padding: 4px 0;">KSh ${orderPayload.total_amount.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding-top: 4px;">PAID VIA:</td>
+            <td style="text-align: right; text-transform: uppercase; padding-top: 4px; font-weight: bold;">${orderPayload.payment_method}</td>
+          </tr>
+        </table>
+
+        <div class="barcode">*${String(orderId).split('-')[0].toUpperCase()}*</div>
 
         <div class="footer">
-          <p>Thank you for dining with us!</p>
-          <p style="margin-top: 4px;">Please come again</p>
+          <p><strong>THANK YOU FOR SHOPPING WITH US!</strong></p>
+          <p>Goods once sold are not returnable.</p>
+          <p style="margin-top: 4px; font-size: 9px; color: #444;">Powered by Smart Grill POS Systems</p>
         </div>
 
         <script>
           window.onload = function() {
             setTimeout(() => {
               window.print();
-              window.close();
             }, 300);
           }
         </script>

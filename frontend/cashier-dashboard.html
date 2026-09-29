@@ -45,6 +45,9 @@
             <button onclick="toggleCartDrawer()" class="lg:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-amber-500/30 transition flex items-center gap-1.5 relative">
                 <span>🛒</span> Cart <span id="mobileCartCount" class="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
             </button>
+            <button onclick="toggleModal('printerModal')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Printer Settings">
+                <span>🖨️</span> <span class="hidden sm:inline">Printer</span>
+            </button>
             <button onclick="toggleModal('expensesModal')" class="hidden sm:flex bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 transition items-center gap-1.5">
                 <span>💸</span> Expense
             </button>
@@ -151,6 +154,39 @@
         </aside>
     </div>
 
+    <!-- PRINTER CONFIGURATION SETTINGS MODAL -->
+    <div id="printerModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2"><span>🖨️</span> Thermal Printer Configuration</h3>
+                <button onclick="toggleModal('printerModal')" class="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+            <p class="text-xs text-slate-400">Configure your receipt printer connection so sales can print automatically without falling back to PDF save.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Printer Name / Model</label>
+                    <input type="text" id="printerNameInput" placeholder="e.g., POS-58, Epson TM-T20" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Connection Interface</label>
+                    <select id="printerInterface" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="USB">USB / Direct Thermal Driver</option>
+                        <option value="NETWORK">Network (LAN / Wi-Fi IP)</option>
+                        <option value="BLUETOOTH">Bluetooth Wireless</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Paper Width</label>
+                    <select id="printerWidth" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <option value="58mm">58mm Thermal Roll</option>
+                        <option value="80mm">80mm Thermal Roll</option>
+                    </select>
+                </div>
+                <button onclick="savePrinterConfig()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition mt-2">Save Printer Settings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- QUANTITY SELECTION MODAL -->
     <div id="qtyModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
@@ -248,7 +284,35 @@
             if(user.branch) {
                 document.getElementById('cashierBranchLabel').innerText = `${user.branch} Workstation`;
             }
+            
+            // Load saved printer config if present
+            const savedPrinter = localStorage.getItem('sg_printer_config');
+            if (savedPrinter) {
+                try {
+                    const cfg = JSON.parse(savedPrinter);
+                    document.getElementById('printerNameInput').value = cfg.name || '';
+                    document.getElementById('printerInterface').value = cfg.interface || 'USB';
+                    document.getElementById('printerWidth').value = cfg.width || '58mm';
+                } catch(e) {}
+            }
         });
+
+        function savePrinterConfig() {
+            const name = document.getElementById('printerNameInput').value.trim();
+            if (!name) {
+                alert("Please enter a printer name or model.");
+                return;
+            }
+            const cfg = {
+                name: name,
+                interface: document.getElementById('printerInterface').value,
+                width: document.getElementById('printerWidth').value,
+                configured_at: new Date().toISOString()
+            };
+            localStorage.setItem('sg_printer_config', JSON.stringify(cfg));
+            alert("Printer successfully configured and saved!");
+            toggleModal('printerModal');
+        }
 
         function toggleCartDrawer() {
             const drawer = document.getElementById('cartDrawer');
