@@ -11,6 +11,7 @@ function resetInactivityTimer() {
 function logoutDueToInactivity() {
     localStorage.removeItem('sg_token');
     localStorage.removeItem('sg_user');
+    localStorage.removeItem('cashier_branch');
     alert("Session expired due to 20 minutes of inactivity. Please log in again.");
     window.location.href = '/index.html';
 }
@@ -27,6 +28,8 @@ if (loginForm) {
         
         const username = document.getElementById('username').value.trim();
         const pin = document.getElementById('pin').value.trim();
+        const branchSelect = document.getElementById('branchSelect');
+        const branch = branchSelect ? branchSelect.value : 'Smartgrill';
         
         const alertBox = document.getElementById('alertBox');
         const submitBtn = document.getElementById('submitBtn');
@@ -43,7 +46,7 @@ if (loginForm) {
             const response = await fetch(`${API_URL}/cashier-login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, pin })
+                body: JSON.stringify({ username, pin, branch })
             });
 
             const data = await response.json();
@@ -54,6 +57,7 @@ if (loginForm) {
                 
                 localStorage.setItem('sg_token', token);
                 localStorage.setItem('sg_user', JSON.stringify(data));
+                localStorage.setItem('cashier_branch', branch);
                 
                 // Prevent redirect loops by ensuring clean routing
                 window.location.replace('/cashier-dashboard.html');
@@ -83,7 +87,7 @@ if (loginForm) {
             }
         } catch (err) {
             alertBox.innerText = 'Server connection error.';
-            alertBox.classList.add('hidden');
+            alertBox.classList.remove('hidden');
         } finally {
             // Restore UI state
             submitBtn.disabled = false;
