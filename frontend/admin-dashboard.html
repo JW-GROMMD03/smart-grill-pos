@@ -686,7 +686,7 @@
                 </div>
             </div>
 
-            <!-- USERS TAB -->
+          <!-- USERS TAB -->
             <div id="usersTab" class="tab-section hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 <div class="glass-panel p-6 shadow-md h-fit">
                     <h3 class="font-bold text-lg md:text-xl mb-4 text-brand-primary">Onboard Cashier</h3>
@@ -694,10 +694,25 @@
                         <input type="text" id="regFullName" placeholder="Full Legal Name" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
                         <input type="text" id="regId" placeholder="Username" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
                         <input type="password" id="regPin" placeholder="4-Digit PIN" maxlength="4" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+                        
+                        <!-- Shift Selection -->
                         <select id="regShift" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
                             <option value="Day">Day Shift</option>
                             <option value="Night">Night Shift</option>
                         </select>
+
+                        <!-- Branch Selection -->
+                        <div>
+                            <label class="block text-xs uppercase font-semibold text-slate-500 mb-1">Assigned Branch</label>
+                            <select id="regBranch" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-brand-primary">
+                                <option value="Smartgrill">Smartgrill</option>
+                                <option value="nyama villa">nyama villa</option>
+                                <option value="Smart kitchen">Smart kitchen</option>
+                                <option value="Smart Resort">Smart Resort</option>
+                                <option value="Smart Villa">Smart Villa</option>
+                            </select>
+                        </div>
+
                         <button onclick="createCashier()" class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold p-3 rounded-lg shadow-lg transition">Create Account</button>
                     </div>
                 </div>
@@ -897,6 +912,7 @@
 
             initCharts();
             loadAllData();
+            loadCashiers();
             connectAdminSocket();
         });
 
@@ -982,6 +998,10 @@
             if(window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');
             }
+
+            if (tab === 'users') {
+                loadCashiers();
+        }
 
             if (tab === 'scanner') {
                 startSmartScanner();
@@ -1783,6 +1803,69 @@
                 `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found.</td></tr>';
             } catch (err) { }
         }
+
+        // Function to load and render cashiers in the Access Control panel
+async function loadCashiers() {
+    try {
+        const selectedBranch = document.getElementById('branchSelect')?.value || 'All';
+        const res = await apiCall(`/api/v1/admin/users?branch=${encodeURIComponent(selectedBranch)}`);
+        
+        const container = document.getElementById('userListArea'); // Updated to match your existing container ID
+        if (!container) return;
+
+        if (!res || res.length === 0) {
+            container.innerHTML = `<p class="text-gray-400 text-sm">No system accounts found for this branch.</p>`;
+            return;
+        }
+
+        container.innerHTML = res.map(user => `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
+                <div>
+                    <h4 class="font-bold text-white">${user.full_name} <span class="text-xs text-slate-500 font-normal">@${user.username}</span> • <span class="text-purple-400">${user.branch || 'N/A'}</span></h4>
+                    <p class="text-xs text-slate-400 mt-1">Shift: ${user.assigned_shift} | Status: <span class="uppercase font-bold ${user.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${user.status}</span></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="updateUserStatus('${user.id}', '${user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'}')" class="text-xs ${user.status === 'ACTIVE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'} px-3 py-1.5 rounded-lg text-white font-bold transition">
+                        ${user.status === 'ACTIVE' ? 'Block' : 'Unblock'}
+                    </button>
+                    <button onclick="deleteUser('${user.id}')" class="text-xs bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-white font-bold transition">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Failed to load cashiers:", err);
+    }
+}
+
+// Function handling cashier creation submission
+async function handleCreateCashier(event) {
+    event.preventDefault();
+    
+    const fullName = document.getElementById('regFullName').value;
+    const username = document.getElementById('regId').value;
+    const pin = document.getElementById('regPin').value;
+    const assignedShift = document.getElementById('regShift').value;
+    const branch = document.getElementById('regBranch').value;
+
+    try {
+        const res = await apiCall(`/api/v1/admin/cashiers/register?full_name=${encodeURIComponent(fullName)}&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}&assigned_shift=${encodeURIComponent(assignedShift)}&branch=${encodeURIComponent(branch)}`, 'POST');
+
+        if (res) {
+            alert('Cashier account successfully created!');
+            document.getElementById('regFullName').value = '';
+            document.getElementById('regId').value = '';
+            document.getElementById('regPin').value = '';
+            loadCashiers(); // Refresh list immediately
+        
+    } else {
+        alert('Failed to create cashier account.');
+    }
+} catch (err) {
+    alert('Failed to create cashier: ' + (err.message || err));
+}
+}
 
         async function loadUsers() {
             try {
