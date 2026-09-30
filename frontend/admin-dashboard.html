@@ -156,7 +156,7 @@
                         <button onclick="managePermit('GRANT', 'EARLY_START', 'DAY')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">🌅 Start Day Early</button>
                         <button onclick="managePermit('GRANT', 'EXTENSION', 'DAY')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">⏳ Day Extension</button>
                         <button onclick="managePermit('GRANT', 'OVERLAP', 'NIGHT')" class="bg-brand-secondary hover:bg-brand-primary text-white text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl shadow transition text-center">🔄 Shift Overlap</button>
-                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl transition text-center">⚙️ Reset to Auto</button>
+                        <button onclick="forceShift('AUTO')" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 text-[10px] md:text-xs font-bold py-2.5 px-2 rounded-xl transition text-center">⚙️️ Reset to Auto</button>
                     </div>
                 </div>
                 
@@ -193,6 +193,7 @@
                                 <tr>
                                     <th>Time</th>
                                     <th>Cashier</th>
+                                    <th>Branch</th>
                                     <th>Details</th>
                                     <th>Method</th>
                                     <th class="text-right">Amount</th>
@@ -209,9 +210,20 @@
                 <!-- Add New Stock Panel -->
                 <div class="glass-panel p-4 md:p-6 shadow-md border-t-4 border-t-emerald-500">
                     <h3 class="text-lg md:text-xl font-bold text-emerald-600 mb-2">Record New Stock Batch</h3>
-                    <p class="text-xs text-slate-500 mb-6">Stock purchases are automatically logged as expenses.</p>
+                    <p class="text-xs text-slate-500 mb-6">Stock purchases are automatically logged as expenses. <span class="text-rose-500 font-bold">* Branch selection is mandatory.</span></p>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Branch <span class="text-rose-500">*</span></label>
+                            <select id="invBatchBranch" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="">Select Branch</option>
+                                <option value="Smartgrill">Smartgrill</option>
+                                <option value="nyama villa">Nyama Villa</option>
+                                <option value="Smart kitchen">Smart Kitchen</option>
+                                <option value="Smart Resort">Smart Resort</option>
+                                <option value="Smart Villa">Smart Villa</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Category</label>
                             <select id="invCat" onchange="toggleInvSubCat()" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
@@ -239,7 +251,7 @@
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Combined Cost (KES)</label>
                             <input type="number" id="invCost" placeholder="0.00" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <div id="multiQtyDiv" class="hidden col-span-1 md:col-span-4 grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <div id="multiQtyDiv" class="hidden col-span-1 md:col-span-5 grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 border-t border-slate-200 dark:border-slate-700 pt-4">
                             <!-- Populated for Fish -->
                         </div>
                     </div>
@@ -318,6 +330,7 @@
                             <thead>
                                 <tr>
                                     <th>Category</th>
+                                    <th>Branch</th>
                                     <th>Initial</th>
                                     <th>Sold (Real-Time)</th>
                                     <th>Est. Remaining</th>
@@ -359,6 +372,7 @@
                             <thead>
                                 <tr>
                                     <th>Batch / Date</th>
+                                    <th>Branch</th>
                                     <th>Duration</th>
                                     <th>Loss/Missing</th>
                                     <th>Profit/Return</th>
@@ -520,6 +534,16 @@
                     <div class="glass-panel p-4 md:p-6 shadow-md lg:col-span-1 space-y-4">
                         <h3 class="text-lg md:text-xl font-bold text-brand-primary">Record Expense</h3>
                         <div>
+                            <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Branch</label>
+                            <select id="expBranch" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
+                                <option value="Smartgrill">Smartgrill</option>
+                                <option value="nyama villa">Nyama Villa</option>
+                                <option value="Smart kitchen">Smart Kitchen</option>
+                                <option value="Smart Resort">Smart Resort</option>
+                                <option value="Smart Villa">Smart Villa</option>
+                            </select>
+                        </div>
+                        <div>
                             <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Date</label>
                             <input type="date" id="expDate" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-primary">
                         </div>
@@ -576,6 +600,27 @@
                             <h4 class="font-bold text-sm text-slate-500 uppercase mb-3">Logged By</h4>
                             <div id="cashierExpenseBreakdown" class="space-y-2 text-sm"></div>
                         </div>
+
+                        <!-- Expense Records Feed with Branch Column -->
+                        <div class="glass-panel overflow-hidden shadow-md mt-6">
+                            <div class="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                                <h4 class="font-bold text-base text-slate-800 dark:text-white">Expense Records Feed</h4>
+                            </div>
+                            <div class="overflow-x-auto p-4">
+                                <table class="w-full data-table whitespace-nowrap">
+                                    <thead>
+                                        <tr>
+                                            <th>Date & Shift</th>
+                                            <th>Branch</th>
+                                            <th>Description</th>
+                                            <th>Method</th>
+                                            <th class="text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="expensesTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -614,7 +659,15 @@
                     </div>
                     <div class="overflow-x-auto p-4 md:p-6">
                         <table class="w-full data-table whitespace-nowrap">
-                            <thead><tr><th>Date & Shift</th><th>Description</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Date & Shift</th>
+                                    <th>Branch</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
                             <tbody id="comprehensiveTableBody"></tbody>
                         </table>
                     </div>
@@ -1209,6 +1262,7 @@
                             <div class="font-bold text-slate-800 dark:text-white">${b.sub_category}</div>
                             <div class="text-[10px] text-slate-500">${b.category} • ${b.duration_hrs.toFixed(1)} hrs active</div>
                         </td>
+                        <td><span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">${b.branch || 'Smartgrill'}</span></td>
                         <td class="font-medium">${b.quantity_initial.toFixed(2)} ${unit}</td>
                         <td class="font-bold text-brand-primary">${b.sold_qty.toFixed(2)} ${unit}</td>
                         <td class="font-black text-emerald-600 text-lg">${b.remaining_qty.toFixed(2)} ${unit}</td>
@@ -1223,7 +1277,7 @@
                             <button onclick="openDepleteModal('${b.id}', '${b.sub_category}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-3 py-1.5 rounded transition">Deplete</button>
                         </td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="8" class="text-center text-slate-400 py-4">No active stock batches.</td></tr>';
+                }).join('') || '<tr><td colspan="9" class="text-center text-slate-400 py-4">No active stock batches.</td></tr>';
 
             } catch (err) {
                 console.error("Inventory Load Error:", err);
@@ -1252,6 +1306,7 @@
                     return `
                     <tr>
                         <td><div class="font-bold">${h.sub_category}</div><div class="text-[10px] text-slate-500">${h.category} • ${dateStr}</div></td>
+                        <td><span class="text-xs font-bold text-purple-400">${h.branch || '-'}</span></td>
                         <td class="text-xs">${h.duration_hrs ? h.duration_hrs.toFixed(1) + ' hrs' : '-'}</td>
                         <td><div class="font-bold text-rose-500">Qty: ${h.declared_lost_qty > 0 ? h.declared_lost_qty.toFixed(2) : '0'}</div><div class="text-[10px]">Val: ${formatKsh(h.money_lost)}</div></td>
                         <td class="font-bold ${profitColor}">${formatKsh(h.profit)}</td>
@@ -1261,7 +1316,7 @@
                             <button onclick="deleteHistory('${h.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs px-2 py-1 rounded font-bold transition">Delete</button>
                         </td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="6" class="text-center text-slate-400 py-4">No historical records found.</td></tr>';
+                }).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-4">No historical records found.</td></tr>';
             } catch (err) {}
         }
 
@@ -1292,6 +1347,12 @@
         }
 
         async function submitNewStock() {
+            const branch = document.getElementById('invBatchBranch').value;
+            if (!branch) {
+                alert("Branch selection is mandatory to input stock!");
+                return;
+            }
+
             const cat = document.getElementById('invCat').value;
             let sub = document.getElementById('invSubCat').value;
             if(cat === 'Others') sub = document.getElementById('invSubCatCustom').value.trim();
@@ -1300,8 +1361,6 @@
             const payment = document.getElementById('invPayment').value;
             const prevDepleted = document.getElementById('invPrevDepleted').checked;
             const prevRemaining = parseFloat(document.getElementById('invPrevRemaining').value) || 0;
-            const branchSelect = document.getElementById('globalBranchFilter');
-            const branch = branchSelect ? branchSelect.value : 'All';
 
             const cashAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invCashAmt').value) : 0;
             const mpesaAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invMpesaAmt').value) : 0;
@@ -1379,12 +1438,12 @@
                 headStyles: { fillColor: [99, 102, 241] },
                 columns: [
                     { header: 'Batch', dataKey: 0 },
-                    { header: 'Duration', dataKey: 1 },
-                    { header: 'Loss', dataKey: 2 },
-                    { header: 'Return', dataKey: 3 },
-                    { header: 'Notes', dataKey: 4 }
-                ],
-                columnStyles: { 5: { cellWidth: 0 } }
+                    { header: 'Branch', dataKey: 1 },
+                    { header: 'Duration', dataKey: 2 },
+                    { header: 'Loss', dataKey: 3 },
+                    { header: 'Return', dataKey: 4 },
+                    { header: 'Notes', dataKey: 5 }
+                ]
             });
             doc.save('Inventory-Report.pdf');
         }
@@ -1584,6 +1643,7 @@
                     const cashier = t.cashiers 
                         ? `<span class="font-bold block">${t.cashiers.full_name}</span> <span class="text-[10px] text-slate-400">(${t.cashiers.assigned_shift})</span>` 
                         : 'Unknown';
+                    const branchName = t.branch || t.cashiers?.branch || 'Smartgrill';
                     
                     let methodBadge = '';
                     const pm = (t.payment_method || '').toUpperCase();
@@ -1600,6 +1660,7 @@
                     <tr>
                         <td class="font-medium text-slate-500">${time}</td>
                         <td>${cashier}</td>
+                        <td><span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">${branchName}</span></td>
                         <td class="text-[10px] md:text-xs truncate max-w-[120px] md:max-w-xs text-slate-500 dark:text-slate-400">${t.item_summary || 'Order Items'}</td>
                         <td>${methodBadge}</td>
                         <td class="text-right font-bold text-emerald-500">${formatKsh(t.total_amount)}</td>
@@ -1706,6 +1767,7 @@
                     document.getElementById('statCashExp').innerText = 'KES 0';
                     document.getElementById('statHighestDay').innerText = '-';
                     document.getElementById('cashierExpenseBreakdown').innerHTML = '<p class="text-slate-400 italic">Error loading expenses.</p>';
+                    document.getElementById('expensesTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-4">No records found.</td></tr>';
                     return;
                 }
                 
@@ -1729,6 +1791,20 @@
                 } else {
                     cashierDiv.innerHTML = '<p class="text-slate-400 italic">No expenses recorded.</p>';
                 }
+
+                if (data.expenses && Array.isArray(data.expenses)) {
+                    document.getElementById('expensesTableBody').innerHTML = data.expenses.map(e => `
+                        <tr>
+                            <td>${e.business_date} (${e.shift || 'Day'})</td>
+                            <td><span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">${e.branch || 'Smartgrill'}</span></td>
+                            <td class="font-medium">${e.description}</td>
+                            <td><span class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs font-bold">${e.payment_type || 'CASH'}</span></td>
+                            <td class="text-right font-bold text-rose-500">${formatKsh(e.amount)}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="5" class="text-center text-slate-400 py-4">No expense records found.</td></tr>';
+                } else {
+                    document.getElementById('expensesTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-4">No expense records found.</td></tr>';
+                }
             } catch (err) {
                 document.getElementById('cashierExpenseBreakdown').innerHTML = '<p class="text-slate-400 italic">Error loading expenses.</p>';
             }
@@ -1742,8 +1818,7 @@
             const businessDate = document.getElementById('expDate').value;
             const cashAmt = parseFloat(document.getElementById('expCashAmt').value) || 0;
             const mpesaAmt = parseFloat(document.getElementById('expMpesaAmt').value) || 0;
-            const branchSelect = document.getElementById('globalBranchFilter');
-            const branch = branchSelect ? branchSelect.value : 'Smartgrill';
+            const branch = document.getElementById('expBranch').value;
 
             if(!desc || isNaN(amt) || amt <= 0) { 
                 alert("Please provide a valid description and amount."); 
@@ -1822,11 +1897,12 @@
                 document.getElementById('comprehensiveTableBody').innerHTML = combined.map(item => `
                     <tr>
                         <td class="text-xs">${item.business_date} (${item.shift || 'Day'})</td>
+                        <td><span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">${item.branch || 'Smartgrill'}</span></td>
                         <td class="font-medium max-w-[120px] md:max-w-xs truncate">${item.display_name}</td>
                         <td><span class="px-2 py-0.5 rounded text-[10px] md:text-xs font-bold ${item.record_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${item.record_type}</span></td>
                         <td class="text-right font-bold ${item.record_type === 'SALE' ? 'text-emerald-500' : 'text-rose-500'}">${formatKsh(item.amount)}</td>
                     </tr>
-                `).join('') || '<tr><td colspan="4" class="text-center text-slate-400 italic py-6">No records found.</td></tr>';
+                `).join('') || '<tr><td colspan="5" class="text-center text-slate-400 italic py-6">No records found.</td></tr>';
             } catch (err) { }
         }
 

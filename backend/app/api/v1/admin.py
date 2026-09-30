@@ -1,4 +1,3 @@
-# admin.py
 import json
 import random
 import string
@@ -1070,7 +1069,7 @@ class InventoryBatchCreate(BaseModel):
     mpesa_amount: float = 0.0
     previous_depleted: bool = True
     previous_remaining: float = 0.0
-    branch: str = "All"
+    branch: str = "Smartgrill"
     items: Optional[List[BatchItem]] = None
 
 class InventoryDeplete(BaseModel):
@@ -1290,7 +1289,8 @@ async def get_live_inventory(background_tasks: BackgroundTasks, branch: Optional
                 "revenue": round(revenue, 2),
                 "duration_hrs": duration_hrs,
                 "dead_stock": is_dead_stock,
-                "low_stock": is_low_stock
+                "low_stock": is_low_stock,
+                "branch": b.get("branch", "Smartgrill")
             }
             active_response.append(active_batch_obj)
 
@@ -1493,11 +1493,13 @@ async def audit_inventory_batch(payload: InventoryAudit, admin=Depends(SecurityE
         raise HTTPException(status_code=500, detail=f"Failed to audit batch: {str(e)}")
 
 @router.get("/inventory/history")
-async def get_inventory_history(category: Optional[str] = None, date: Optional[str] = None, admin=Depends(SecurityEngine.verify_token)):
+async def get_inventory_history(category: Optional[str] = None, date: Optional[str] = None, branch: Optional[str] = None, admin=Depends(SecurityEngine.verify_token)):
     try:
         query = supabase.table("inventory_batches").select("*").eq("status", "DEPLETED")
         if category and category != "All":
             query = query.eq("category", category)
+        if branch and branch != "All" and branch != "All Branches":
+            query = query.eq("branch", branch)
         if date:
             query = query.gte("created_at", f"{date}T00:00:00").lte("created_at", f"{date}T23:59:59")
             
@@ -1537,12 +1539,19 @@ async def delete_inventory_batch(batch_id: str, admin=Depends(SecurityEngine.ver
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/inventory/shift-analysis")
-async def shift_analysis(date: str, admin=Depends(SecurityEngine.verify_token)):
+async def shift_analysis(date: str, branch: Optional[str] = None, admin=Depends(SecurityEngine.verify_token)):
     try:
-        exp_res = supabase.table("expenses").select("*").eq("business_date", date).execute()
+        exp_query = supabase.table("expenses").select("*").eq("business_date", date)
+        sales_query = supabase.table("sales").select("*").eq("business_date", date)
+        
+        if branch and branch != "All" and branch != "All Branches":
+            exp_query = exp_query.eq("branch", branch)
+            sales_query = sales_query.eq("branch", branch)
+
+        exp_res = exp_query.execute()
         expenses = exp_res.data or []
         
-        sales_res = supabase.table("sales").select("*").eq("business_date", date).execute()
+        sales_res = sales_query.execute()
         sales = sales_res.data or []
         
         shifts_data = {"Day": {"cost": 0, "revenue": 0}, "Night": {"cost": 0, "revenue": 0}}

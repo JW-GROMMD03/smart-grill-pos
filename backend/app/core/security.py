@@ -1,4 +1,3 @@
-# app/core/security.py
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
