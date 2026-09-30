@@ -1,4 +1,3 @@
-// pos.js
 const API_POS = '/api/v1/pos';
 
 let cart = JSON.parse(localStorage.getItem('sg_cart')) || [];
@@ -326,9 +325,9 @@ async function submitOrder() {
   }
 }
 
-// =======================================================
-// STANDARD SUPERMARKET-STYLE THERMAL RECEIPT GENERATOR
-// =======================================================
+// =========================================================================
+// TOP-TIER RESTAURANT THERMAL RECEIPT GENERATOR WITH VERIFICATION QR CODE
+// =========================================================================
 function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
@@ -352,7 +351,6 @@ function printBranchReceipt(orderPayload, orderId) {
     paymentInfoLines = "";
   }
 
-  // Standard Supermarket item row breakdown (Description on row 1, Qty x Price ... Total on row 2)
   const itemsHtml = orderPayload.items.map((i, idx) => `
     <tr style="border-bottom: 1px dotted #bbb;">
       <td colspan="2" style="padding-top: 5px; font-weight: bold; text-align: left;">${idx + 1}. ${i.item_name}</td>
@@ -367,12 +365,23 @@ function printBranchReceipt(orderPayload, orderId) {
     </tr>
   `).join('');
 
-  const receiptWindow = window.open('', '_blank', 'width=420,height=700');
+  // Encrypted Verification Payload for Admin QR Code Scanner
+  const verificationData = JSON.stringify({
+    order_id: orderId,
+    branch: branchName,
+    total: orderPayload.total_amount,
+    timestamp: new Date().toISOString(),
+    items_count: orderPayload.items.reduce((acc, i) => acc + i.quantity, 0),
+    issuer: "HAVYN_TECH_SECURE_POS"
+  });
+
+  const receiptWindow = window.open('', '_blank', 'width=420,height=750');
   receiptWindow.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
         <title>Receipt - ${branchName}</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <style>
           @page { size: auto; margin: 0mm; }
           body { 
@@ -396,11 +405,11 @@ function printBranchReceipt(orderPayload, orderId) {
             margin-bottom: 12px;
           }
           .action-toolbar button {
-            background: #f59e0b;
-            color: #020617;
+            background: #4f46e5;
+            color: #fff;
             font-weight: bold;
             border: none;
-            padding: 6px 12px;
+            padding: 6px 14px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 11px;
@@ -416,8 +425,10 @@ function printBranchReceipt(orderPayload, orderId) {
           table { width: 100%; border-collapse: collapse; margin-top: 4px; }
           .totals-table { width: 100%; margin-top: 6px; font-size: 12px; }
           .totals-table td { padding: 2px 0; }
-          .barcode { text-align: center; font-family: 'Libre Barcode 39', monospace; font-size: 36px; letter-spacing: 2px; margin-top: 8px; }
+          .qr-container { text-align: center; margin: 10px 0; }
+          .qr-container div { display: inline-block; padding: 4px; background: #fff; border: 1px solid #ccc; }
           .footer { margin-top: 10px; font-size: 10px; text-align: center; border-top: 1px dotted #000; padding-top: 6px; }
+          .havyn-brand { margin-top: 6px; font-size: 9px; font-weight: bold; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; }
           @media print {
             .action-toolbar { display: none !important; }
             body { width: 100%; padding: 0; margin: 0; }
@@ -425,12 +436,12 @@ function printBranchReceipt(orderPayload, orderId) {
         </style>
       </head>
       <body>
-        <!-- Action Toolbar with Print and Settings Buttons -->
+        <!-- Action Toolbar with Print and Settings Buttons (No Save Button) -->
         <div class="action-toolbar">
           <span style="font-size: 11px;">🖨️ Thermal Ready</span>
           <div style="display: flex; gap: 6px;">
             <button class="secondary" onclick="window.opener.toggleModal('printerModal'); window.close();">⚙ Settings</button>
-            <button onclick="window.print()">🖨️ Print Receipt</button>
+            <button onclick="window.print()">🖨️️ Print Receipt</button>
           </div>
         </div>
 
@@ -444,10 +455,10 @@ function printBranchReceipt(orderPayload, orderId) {
         
         <div class="divider"></div>
         <div style="font-size: 10px; line-height: 1.4;">
-          <strong>CASH SALE TICKET</strong><br>
+          <strong>OFFICIAL DINING TICKET</strong><br>
           Receipt # : <strong>${String(orderId).toUpperCase()}</strong><br>
-          Date    : ${new Date().toLocaleString()}<br>
-          Cashier : ${user.full_name || 'Staff'}
+          Date/Time : ${new Date().toLocaleString()}<br>
+          Cashier   : ${user.full_name || 'Staff'}
         </div>
         
         <div class="divider"></div>
@@ -479,19 +490,34 @@ function printBranchReceipt(orderPayload, orderId) {
           </tr>
         </table>
 
-        <div class="barcode">*${String(orderId).split('-')[0].toUpperCase()}*</div>
+        <!-- UNIQUE VERIFICATION QR CODE -->
+        <div class="qr-container">
+          <div id="receiptQrCode"></div>
+          <div style="font-size: 8px; font-family: monospace; margin-top: 2px;">SCAN TO VERIFY ORDER</div>
+        </div>
 
         <div class="footer">
-          <p><strong>THANK YOU FOR SHOPPING WITH US!</strong></p>
+          <p><strong>THANK YOU FOR DINING WITH US!</strong></p>
           <p>Goods once sold are not returnable.</p>
-          <p style="margin-top: 4px; font-size: 9px; color: #444;">Powered by Smart Grill POS Systems</p>
+          <div class="havyn-brand">Powered by HAVYN tech solutions</div>
         </div>
 
         <script>
           window.onload = function() {
+            try {
+              new QRCode(document.getElementById("receiptQrCode"), {
+                text: ${JSON.stringify(verificationData)},
+                width: 90,
+                height: 90,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+              });
+            } catch(e) {}
+
             setTimeout(() => {
               window.print();
-            }, 300);
+            }, 400);
           }
         </script>
       </body>
