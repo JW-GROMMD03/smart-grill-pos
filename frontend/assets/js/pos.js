@@ -281,14 +281,70 @@ function validatePaymentInputs() {
   }
 }
 
+// =========================================================================
+// REAL HARDWARE PRINTER DETECTION & CHECKOUT FLOW
+// =========================================================================
+async function checkHardwarePrinterConnection() {
+    const savedConfig = localStorage.getItem('sg_printer_config');
+    if (!savedConfig) return { connected: false, reason: "No printer configuration saved." };
+
+    try {
+        const cfg = JSON.parse(savedConfig);
+        // If USB or Serial interface is specified, verify via Web Serial API if supported
+        if (cfg.interface === 'USB' && navigator.serial) {
+            const ports = await navigator.serial.getPorts();
+            if (ports && ports.length > 0) {
+                return { connected: true, type: 'USB' };
+            }
+        }
+        
+        // Fallback: If network printer or configured simulation, check if explicit hardware check was acknowledged
+        // To prevent blocking cashiers when simulation or driver is active, check simulated handshake flag or local state
+        if (localStorage.getItem('sg_printer_verified') === 'true') {
+            return { connected: true, type: cfg.interface || 'SIMULATED' };
+        }
+
+        // If no active port found, return not connected so we can trigger the prompt modal
+        return { connected: false, reason: "No active physical printer port detected." };
+    } catch (e) {
+        return { connected: false, reason: e.message };
+    }
+}
+
 async function submitOrder() {
   const printerConfig = localStorage.getItem('sg_printer_config');
   if (!printerConfig) {
-      alert("⚠️ No thermal printer detected! Please configure your receipt printer in settings before completing checkout.");
-      toggleModal('printerModal');
+      if (confirm("⚠️ No printer configured! Would you like to configure your printer now?")) {
+          toggleModal('printerModal');
+      }
       return;
   }
 
+  // Perform real hardware check
+  const hardwareStatus = await checkHardwarePrinterConnection();
+  if (!hardwareStatus.connected) {
+      // Prompt user with hardware error and options: Configure Printer or Submit Without Printing
+      const bypassPrint = confirm(
+          "⚠️ HARDWARE ERROR: No physical receipt printer connection detected!\n\n" +
+          "Click [OK] to Submit Sale Without Printing (Receipt will not be printed).\n" +
+          "Click [Cancel] to open Printer Settings / Re-check connection."
+      );
+
+      if (!bypassPrint) {
+          toggleModal('printerModal');
+          return;
+      } else {
+          // Cashier explicitly chose to submit sale without printing
+          executeOrderSubmission(false, false);
+          return;
+      }
+  }
+
+  // Hardware connected successfully, proceed with normal print & submit flow
+  executeOrderSubmission(true, true);
+}
+
+async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
   const total = parseFloat(document.getElementById('cartTotal').innerText);
   const method = document.getElementById('paymentMethod').value;
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -299,7 +355,9 @@ async function submitOrder() {
     cash_amount: method === 'partial' ? parseFloat(document.getElementById('cashInput').value) : (method === 'cash' ? total : 0),
     mpesa_amount: method === 'partial' ? parseFloat(document.getElementById('mpesaInput').value) : (method === 'mpesa' ? total : 0),
     total_amount: total,
-    items: cart
+    items: cart,
+    print_receipt: printReceiptFlag,
+    printer_hardware_verified: hardwareVerifiedFlag
   };
 
   try {
@@ -311,9 +369,13 @@ async function submitOrder() {
 
     if (res.ok) {
       const dataRes = await res.json();
-      alert("Order Processed Successfully!");
       
-      printBranchReceipt(payload, dataRes.order_id);
+      if (printReceiptFlag) {
+          alert("Order Processed Successfully & Printing Receipt!");
+          printBranchReceipt(payload, dataRes.order_id);
+      } else {
+          alert("Order Processed Successfully (Submitted Without Printing).");
+      }
 
       cart = [];
       updateState();

@@ -4,7 +4,9 @@ import json
 import random
 import string
 from datetime import date
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from pydantic import BaseModel, Field
 from app.schemas.sales import CreateOrderSchema, QRDeleteRequestSchema, ExpenseSchema
 from app.core.supabase import supabase
 from app.core.security import SecurityEngine
@@ -13,6 +15,10 @@ from app.core.shift_engine import ShiftEngine
 from app.core.report_engine import ReportEngine
 
 router = APIRouter()
+
+class ExtendedOrderSchema(CreateOrderSchema):
+    print_receipt: Optional[bool] = Field(default=True, description="Flag indicating whether physical receipt printing was executed")
+    printer_hardware_verified: Optional[bool] = Field(default=False, description="Hardware connection status verified on client workstation")
 
 @router.get("/menu")
 @router.get("/menu/")
@@ -56,7 +62,7 @@ async def get_menu(user: dict = Depends(SecurityEngine.verify_token)):
 @router.post("/checkout")
 @router.post("/checkout/")
 async def process_checkout(
-    order: CreateOrderSchema, 
+    order: ExtendedOrderSchema, 
     background_tasks: BackgroundTasks,
     user: dict = Depends(SecurityEngine.verify_token)
 ):
@@ -73,7 +79,6 @@ async def process_checkout(
             report_func=ReportEngine.generate_and_email_shift_report
         )
     except HTTPException as he:
-        # Graceful fallback to prevent 403 Forbidden blocking cashier sales
         active_shift = assigned_shift or "Day"
         business_date = str(date.today())
     except Exception as e:
@@ -95,7 +100,11 @@ async def process_checkout(
             "total_amount": order.total_amount,
             "shift": active_shift,
             "business_date": business_date,
-            "status": "Completed"
+            "status": "Completed",
+            "metadata": json.dumps({
+                "print_receipt": order.print_receipt,
+                "hardware_verified": order.printer_hardware_verified
+            })
         }).execute()
 
         if not sale_res.data:
@@ -127,7 +136,13 @@ async def process_checkout(
         except Exception:
             pass
 
-        return {"status": "success", "order_id": sale_id, "shift": active_shift, "business_date": business_date}
+        return {
+            "status": "success", 
+            "order_id": sale_id, 
+            "shift": active_shift, 
+            "business_date": business_date,
+            "print_executed": order.print_receipt
+        }
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
