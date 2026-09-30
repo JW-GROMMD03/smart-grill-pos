@@ -100,11 +100,7 @@ async def process_checkout(
             "total_amount": order.total_amount,
             "shift": active_shift,
             "business_date": business_date,
-            "status": "Completed",
-            "metadata": json.dumps({
-                "print_receipt": order.print_receipt,
-                "hardware_verified": order.printer_hardware_verified
-            })
+            "status": "Completed"
         }).execute()
 
         if not sale_res.data:
