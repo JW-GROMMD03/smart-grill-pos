@@ -761,12 +761,24 @@ async def get_deep_analytics(
         pass 
 
     try:
-        sales_query = supabase.table("sales").select("id, payment_method, cash_amount, mpesa_amount, total_amount").gte("business_date", start_date).lte("business_date", end_date)
-        if branch and branch != "All" and branch != "All Branches":
-            sales_query = sales_query.eq("branch", branch)
+        # Join with cashiers table to resolve branch correctly even if sales.branch is unpopulated
+        sales_query = supabase.table("sales").select(
+            "id, payment_method, cash_amount, mpesa_amount, total_amount, branch, cashier_id, cashiers(branch)"
+        ).gte("business_date", start_date).lte("business_date", end_date)
             
         sales_res = sales_query.execute()
-        sales_map = {s["id"]: s for s in (sales_res.data or [])}
+        all_sales = sales_res.data or []
+
+        # Filter sales robustly checking both sale-level and cashier-level branch definitions
+        filtered_sales = []
+        for s in all_sales:
+            sale_branch = s.get("branch") or (s.get("cashiers") and s["cashiers"].get("branch")) or "Smartgrill"
+            if branch and branch not in ["All", "All Branches"]:
+                if str(sale_branch).strip().lower() != str(branch).strip().lower():
+                    continue
+            filtered_sales.append(s)
+
+        sales_map = {s["id"]: s for s in filtered_sales}
         sale_ids = list(sales_map.keys())
 
         items_res = supabase.table("sale_items").select("*").in_("sale_id", sale_ids).execute() if sale_ids else {"data": []}
