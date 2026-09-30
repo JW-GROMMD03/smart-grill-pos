@@ -1001,7 +1001,7 @@
 
             if (tab === 'users') {
                 loadCashiers();
-        }
+            }
 
             if (tab === 'scanner') {
                 startSmartScanner();
@@ -1030,7 +1030,6 @@
             document.getElementById('expPartialDiv').style.display = (type === 'PARTIAL') ? 'block' : 'none';
         }
 
-        // Inventory Specific Toggles
         function toggleInvSubCat() {
             const cat = document.getElementById('invCat').value;
             const sub = document.getElementById('invSubCat');
@@ -1065,7 +1064,7 @@
                     qtyLabel.innerText = "Quantity (Crates)";
                 } else if (cat === 'Greens') {
                     sub.innerHTML = '<option value="Cabbage">Cabbage</option><option value="Kales">Kales (Sukuma)</option><option value="Managu">Managu (Plain/Special)</option><option value="Mchicha">Mchicha</option><option value="Tomatoes">Tomatoes</option>';
-                    singleQtyDiv.classList.add('hidden'); // Greens qty generally implied
+                    singleQtyDiv.classList.add('hidden');
                 } else if (cat === 'Water') {
                     sub.innerHTML = '<option value="Small">Small (500ml)</option><option value="1 Litre">1 Litre</option>';
                     qtyLabel.innerText = "Quantity (Bottles)";
@@ -1119,36 +1118,48 @@
             document.getElementById('blockDaysDiv').classList.toggle('hidden', val !== 'days');
         }
 
-        async function apiCall(endpoint, method='GET') {
-    const date = document.getElementById('dateFilter').value;
-    const branchSelect = document.getElementById('globalBranchFilter');
-    const branch = branchSelect ? branchSelect.value : 'All';
+        async function apiCall(endpoint, method = 'GET', bodyData = null) {
+            const date = document.getElementById('dateFilter').value;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
 
-    let url = `${BASE_URL}/api/v1/admin${endpoint}`;
-    const separator = endpoint.includes('?') ? '&' : '?';
-    url += `${separator}business_date=${date}&start_date=${date}&end_date=${date}&branch=${encodeURIComponent(branch)}`;
+            let cleanEndpoint = endpoint.startsWith('/api/v1/admin') ? endpoint.replace('/api/v1/admin', '') : endpoint;
+            if (!cleanEndpoint.startsWith('/')) cleanEndpoint = '/' + cleanEndpoint;
 
-    try {
-        const res = await fetch(url, {
-            method: method, 
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
-        });
-        
-        if (res.status === 401 || res.status === 403) {
-            logout();
-            return null;
+            let url = `${BASE_URL}/api/v1/admin${cleanEndpoint}`;
+            const separator = url.includes('?') ? '&' : '?';
+            url += `${separator}business_date=${date}&start_date=${date}&end_date=${date}&branch=${encodeURIComponent(branch)}`;
+
+            const options = {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('sg_token')}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            if (bodyData) {
+                options.body = JSON.stringify(bodyData);
+            }
+
+            try {
+                const res = await fetch(url, options);
+                
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                    return null;
+                }
+                
+                if (!res.ok) {
+                    return null;
+                }
+                
+                return await res.json();
+            } catch (err) {
+                console.error("API Call Error:", err);
+                return null;
+            }
         }
-        
-        if (!res.ok) {
-            return null;
-        }
-        
-        return await res.json();
-    } catch (err) {
-        console.error("API Call Error:", err);
-        return null;
-    }
-}
 
         function loadAllData() {
             loadShiftStatus();
@@ -1163,18 +1174,19 @@
             if(currentTab === 'records') loadComprehensiveRecords();
             if(currentTab === 'menu') loadMenu();
             if(currentTab === 'users') loadUsers();
-            toggleInvSubCat(); // Initialize inventory form
+            toggleInvSubCat();
         }
 
         async function loadInventory() {
             try {
-                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/live`, {
+                const branchSelect = document.getElementById('globalBranchFilter');
+                const branch = branchSelect ? branchSelect.value : 'All';
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/live?branch=${encodeURIComponent(branch)}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 if (!res.ok) return;
                 const data = await res.json();
                 
-                // Render Live Table
                 document.getElementById('inventoryTableBody').innerHTML = data.active.map(b => {
                     let roiColor = 'text-slate-400';
                     const profit = (b.revenue || 0) - (b.cost || 0);
@@ -1221,8 +1233,10 @@
         async function loadInventoryHistory() {
             const date = document.getElementById('historyDateFilter').value;
             const cat = document.getElementById('historyCatFilter').value;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
             
-            let query = `?category=${cat}`;
+            let query = `?category=${cat}&branch=${encodeURIComponent(branch)}`;
             if(date) query += `&date=${date}`;
 
             try {
@@ -1253,9 +1267,11 @@
 
         async function loadShiftAnalysis() {
             const date = document.getElementById('shiftAnalysisDate').value;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
             if(!date) return;
             try {
-                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/shift-analysis?date=${date}`, {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/inventory/shift-analysis?date=${date}&branch=${encodeURIComponent(branch)}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 if(!res.ok) return;
@@ -1284,6 +1300,8 @@
             const payment = document.getElementById('invPayment').value;
             const prevDepleted = document.getElementById('invPrevDepleted').checked;
             const prevRemaining = parseFloat(document.getElementById('invPrevRemaining').value) || 0;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
 
             const cashAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invCashAmt').value) : 0;
             const mpesaAmt = payment === 'PARTIAL' ? parseFloat(document.getElementById('invMpesaAmt').value) : 0;
@@ -1299,7 +1317,7 @@
                 });
                 if(items.length === 0) return alert("Enter at least one quantity for Fish variants.");
             } else if (cat === 'Greens') {
-                items.push({ sub_category: sub, quantity: 0 }); // Greens quantity not required
+                items.push({ sub_category: sub, quantity: 0 });
             } else {
                 const qty = parseFloat(document.getElementById('invQty').value);
                 if(isNaN(qty) || qty <= 0) return alert("Valid quantity required.");
@@ -1319,6 +1337,7 @@
                 mpesa_amount: mpesaAmt,
                 previous_depleted: prevDepleted,
                 previous_remaining: prevRemaining,
+                branch: branch,
                 items: items
             };
 
@@ -1357,7 +1376,7 @@
                 html: '#historyTable',
                 startY: 30,
                 theme: 'striped',
-                headStyles: { fillColor: [99, 102, 241] }, // Brand Primary
+                headStyles: { fillColor: [99, 102, 241] },
                 columns: [
                     { header: 'Batch', dataKey: 0 },
                     { header: 'Duration', dataKey: 1 },
@@ -1365,7 +1384,7 @@
                     { header: 'Return', dataKey: 3 },
                     { header: 'Notes', dataKey: 4 }
                 ],
-                columnStyles: { 5: { cellWidth: 0 } } // hide action buttons column
+                columnStyles: { 5: { cellWidth: 0 } }
             });
             doc.save('Inventory-Report.pdf');
         }
@@ -1674,8 +1693,10 @@
 
         async function loadExpenses() {
             const month = document.getElementById('expMonthFilter').value;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
             try {
-                const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}`, {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/expenses/filtered?month=${month}&branch=${encodeURIComponent(branch)}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 
@@ -1721,6 +1742,8 @@
             const businessDate = document.getElementById('expDate').value;
             const cashAmt = parseFloat(document.getElementById('expCashAmt').value) || 0;
             const mpesaAmt = parseFloat(document.getElementById('expMpesaAmt').value) || 0;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'Smartgrill';
 
             if(!desc || isNaN(amt) || amt <= 0) { 
                 alert("Please provide a valid description and amount."); 
@@ -1734,7 +1757,8 @@
                 cash_amount: cashAmt,
                 mpesa_amount: mpesaAmt,
                 business_date: businessDate || document.getElementById('dateFilter').value,
-                shift: shift
+                shift: shift,
+                branch: branch
             };
 
             try {
@@ -1765,6 +1789,8 @@
 
         async function loadComprehensiveRecords() {
             const type = document.getElementById('recType').value;
+            const branchSelect = document.getElementById('globalBranchFilter');
+            const branch = branchSelect ? branchSelect.value : 'All';
             let queryParam = '';
             if (type === 'date') queryParam = `date=${document.getElementById('recDateInput').value}`;
             else if (type === 'month') queryParam = `month=${document.getElementById('recMonthInput').value}`;
@@ -1772,7 +1798,7 @@
 
             const shift = document.getElementById('recShift').value;
             try {
-                const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}`, {
+                const res = await fetch(`${BASE_URL}/api/v1/admin/records/comprehensive?${queryParam}&shift=${shift}&branch=${encodeURIComponent(branch)}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
                 
@@ -1804,95 +1830,79 @@
             } catch (err) { }
         }
 
-        // Function to load and render cashiers in the Access Control panel
-async function loadCashiers() {
-    try {
-        const selectedBranch = document.getElementById('branchSelect')?.value || 'All';
-        const res = await apiCall(`/api/v1/admin/users?branch=${encodeURIComponent(selectedBranch)}`);
-        
-        const container = document.getElementById('userListArea'); // Updated to match your existing container ID
-        if (!container) return;
+        async function loadCashiers() {
+            try {
+                const branchSelect = document.getElementById('globalBranchFilter');
+                const selectedBranch = branchSelect ? branchSelect.value : 'All';
+                const res = await apiCall(`/api/v1/admin/users?branch=${encodeURIComponent(selectedBranch)}`);
+                
+                const container = document.getElementById('userListArea');
+                if (!container) return;
 
-        if (!res || res.length === 0) {
-            container.innerHTML = `<p class="text-gray-400 text-sm">No system accounts found for this branch.</p>`;
-            return;
+                if (!res || res.length === 0) {
+                    container.innerHTML = `<p class="text-gray-400 text-sm">No system accounts found for this branch.</p>`;
+                    return;
+                }
+
+                container.innerHTML = res.map(user => `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
+                        <div>
+                            <h4 class="font-bold text-white">${user.full_name} <span class="text-xs text-slate-500 font-normal">@${user.username}</span> • <span class="text-purple-400">${user.branch || 'N/A'}</span></h4>
+                            <p class="text-xs text-slate-400 mt-1">Shift: ${user.assigned_shift} | Status: <span class="uppercase font-bold ${user.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${user.status}</span></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="updateUserStatus('${user.id}', '${user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'}')" class="text-xs ${user.status === 'ACTIVE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'} px-3 py-1.5 rounded-lg text-white font-bold transition">
+                                ${user.status === 'ACTIVE' ? 'Block' : 'Unblock'}
+                            </button>
+                            <button onclick="deleteUser('${user.id}')" class="text-xs bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-white font-bold transition">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to load cashiers:", err);
+            }
         }
-
-        container.innerHTML = res.map(user => `
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
-                <div>
-                    <h4 class="font-bold text-white">${user.full_name} <span class="text-xs text-slate-500 font-normal">@${user.username}</span> • <span class="text-purple-400">${user.branch || 'N/A'}</span></h4>
-                    <p class="text-xs text-slate-400 mt-1">Shift: ${user.assigned_shift} | Status: <span class="uppercase font-bold ${user.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${user.status}</span></p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="updateUserStatus('${user.id}', '${user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'}')" class="text-xs ${user.status === 'ACTIVE' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'} px-3 py-1.5 rounded-lg text-white font-bold transition">
-                        ${user.status === 'ACTIVE' ? 'Block' : 'Unblock'}
-                    </button>
-                    <button onclick="deleteUser('${user.id}')" class="text-xs bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-white font-bold transition">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    } catch (err) {
-        console.error("Failed to load cashiers:", err);
-    }
-}
-
-// Function handling cashier creation submission
-async function handleCreateCashier(event) {
-    event.preventDefault();
-    
-    const fullName = document.getElementById('regFullName').value;
-    const username = document.getElementById('regId').value;
-    const pin = document.getElementById('regPin').value;
-    const assignedShift = document.getElementById('regShift').value;
-    const branch = document.getElementById('regBranch').value;
-
-    try {
-        const res = await apiCall(`/api/v1/admin/cashiers/register?full_name=${encodeURIComponent(fullName)}&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}&assigned_shift=${encodeURIComponent(assignedShift)}&branch=${encodeURIComponent(branch)}`, 'POST');
-
-        if (res) {
-            alert('Cashier account successfully created!');
-            document.getElementById('regFullName').value = '';
-            document.getElementById('regId').value = '';
-            document.getElementById('regPin').value = '';
-            loadCashiers(); // Refresh list immediately
-        
-    } else {
-        alert('Failed to create cashier account.');
-    }
-} catch (err) {
-    alert('Failed to create cashier: ' + (err.message || err));
-}
-}
 
         async function loadUsers() {
             try {
-                const res = await fetch(`${BASE_URL}/api/v1/admin/users`, {
+                const branchSelect = document.getElementById('globalBranchFilter');
+                const selectedBranch = branchSelect ? branchSelect.value : 'All';
+                
+                const res = await fetch(`${BASE_URL}/api/v1/admin/users?branch=${encodeURIComponent(selectedBranch)}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('sg_token')}` }
                 });
+                
                 if (!res.ok) return;
                 const users = await res.json();
                 
-                if (Array.isArray(users)) {
-                    document.getElementById('userListArea').innerHTML = users.map(u => `
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
-                            <div>
-                                <h4 class="font-bold">${u.full_name} <span class="text-xs text-slate-500 font-normal">(${u.username})</span></h4>
-                                <p class="text-xs text-slate-400 mt-1">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
-                            </div>
-                            <div class="flex space-x-2">
-                                ${u.status === 'ACTIVE' ? 
-                                    `<button onclick="openBlockModal('${u.id}')" class="flex-1 sm:flex-none bg-amber-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-amber-600 transition">Block</button>` : 
-                                    `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="flex-1 sm:flex-none bg-emerald-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-emerald-600 transition">Unblock</button>`
-                                }
-                                <button onclick="deleteUser('${u.id}')" class="flex-1 sm:flex-none bg-rose-500 text-white text-xs px-4 py-2 rounded font-bold hover:bg-rose-600 transition">Delete</button>
-                            </div>
-                        </div>
-                    `).join('') || '<p class="text-slate-400 italic">No cashiers registered.</p>';
+                const container = document.getElementById('userListArea');
+                if (!container) return;
+
+                if (!Array.isArray(users) || users.length === 0) {
+                    container.innerHTML = `<p class="text-slate-400 italic text-sm">No system accounts registered for this branch.</p>`;
+                    return;
                 }
-            } catch (err) {}
+
+                container.innerHTML = users.map(u => `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl gap-3">
+                        <div>
+                            <h4 class="font-bold text-slate-800 dark:text-white">${u.full_name} <span class="text-xs text-slate-500 font-normal">(@${u.username})</span> • <span class="text-purple-400">${u.branch || 'N/A'}</span></h4>
+                            <p class="text-xs text-slate-400 mt-1">Shift: ${u.assigned_shift} | Status: <span class="uppercase font-bold ${u.status === 'ACTIVE' ? 'text-emerald-500' : 'text-rose-500'}">${u.status}</span></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${u.status === 'ACTIVE' ? 
+                                `<button onclick="openBlockModal('${u.id}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition">Block</button>` : 
+                                `<button onclick="updateUserStatus('${u.id}', 'ACTIVE')" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition">Unblock</button>`
+                            }
+                            <button onclick="deleteUser('${u.id}')" class="bg-rose-500 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to load users:", err);
+            }
         }
 
         function openBlockModal(userId) {
@@ -2222,6 +2232,7 @@ async function handleCreateCashier(event) {
             const username = document.getElementById('regId').value.trim();
             const pin = document.getElementById('regPin').value.trim();
             const shift = document.getElementById('regShift').value;
+            const branch = document.getElementById('regBranch').value;
 
             if (!fullName || !username || !pin) {
                 alert("Please fill out all fields.");
@@ -2232,7 +2243,7 @@ async function handleCreateCashier(event) {
                 return;
             }
 
-            const url = `${BASE_URL}/api/v1/admin/cashiers/register?full_name=${encodeURIComponent(fullName)}&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}&assigned_shift=${encodeURIComponent(shift)}`;
+            const url = `${BASE_URL}/api/v1/admin/cashiers/register?full_name=${encodeURIComponent(fullName)}&username=${encodeURIComponent(username)}&pin=${encodeURIComponent(pin)}&assigned_shift=${encodeURIComponent(shift)}&branch=${encodeURIComponent(branch)}`;
 
             try {
                 const res = await fetch(url, {
@@ -2241,7 +2252,7 @@ async function handleCreateCashier(event) {
                 });
 
                 if (res.ok) {
-                    alert("Cashier account successfully authorized and created!");
+                    alert("Cashier account successfully created!");
                     document.getElementById('regFullName').value = '';
                     document.getElementById('regId').value = '';
                     document.getElementById('regPin').value = '';
