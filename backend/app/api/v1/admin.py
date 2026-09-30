@@ -37,7 +37,6 @@ class ShiftForceRequest(BaseModel):
 @router.get("/shift/status")
 async def get_shift_status(branch: str = "Smartgrill", admin=Depends(SecurityEngine.verify_token)):
     """Returns the current clock shift, system active shift, permits, and forced overrides."""
-    # Pass branch_id to both engine methods
     (clock_shift, clock_bdate), _, in_grace = ShiftEngine.get_shift_context(branch_id=branch)
     eff_shift, eff_bdate, is_overridden = await ShiftEngine.get_effective_shift_context(branch_id=branch)
     
@@ -45,10 +44,10 @@ async def get_shift_status(branch: str = "Smartgrill", admin=Depends(SecurityEng
     if isinstance(active_shift_id, bytes):
         active_shift_id = active_shift_id.decode('utf-8')
 
-    permit_raw = await redis_client.get("system:shift_permit")
+    permit_raw = await redis_client.get(f"system:shift_permit:{branch}") or await redis_client.get("system:shift_permit")
     active_permit = json.loads(permit_raw.decode('utf-8') if isinstance(permit_raw, bytes) else permit_raw) if permit_raw else None
 
-    override_raw = await redis_client.get("system:shift_override")
+    override_raw = await redis_client.get(f"system:shift_override:{branch}") or await redis_client.get("system:shift_override")
     active_override = json.loads(override_raw.decode('utf-8') if isinstance(override_raw, bytes) else override_raw) if override_raw else None
 
     return {
@@ -66,7 +65,6 @@ async def get_shift_status(branch: str = "Smartgrill", admin=Depends(SecurityEng
 
 @router.post("/shift/permit")
 async def manage_shift_permit(payload: ShiftPermitRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
-    """Grants or revokes dynamic shift permits (Early Day Start, Extension, or Overlap)."""
     admin_id = admin.get("sub")
     action = payload.action.upper()
 
@@ -103,7 +101,6 @@ async def manage_shift_permit(payload: ShiftPermitRequest, request: Request, adm
 
 @router.post("/shift/force")
 async def force_shift_mode(payload: ShiftForceRequest, request: Request, admin=Depends(SecurityEngine.verify_token)):
-    """Manually locks system operation into DAY or NIGHT shift, or resets to AUTO."""
     target_shift = payload.shift.upper()
 
     if target_shift in ["DAY", "NIGHT"]:
@@ -206,7 +203,6 @@ class FinalResetRequest(BaseModel):
 
 @router.post("/vault/initiate-reset")
 async def terminal_initiate_reset(payload: VaultResetInit, request: Request):
-    """Triggered exclusively via terminal CLI script with master key authentication."""
     master_header = request.headers.get("x-master-key")
     master_secret = getattr(settings, "MASTER_SECRET_KEY", "smart-grill-super-master-key")
     if master_header != master_secret:
@@ -283,12 +279,14 @@ class MenuItemCreate(BaseModel):
     category: str
     price: float
     sub_category: Optional[str] = None
+    branch: Optional[str] = "Smartgrill"
 
 class MenuItemUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     price: Optional[float] = None
     sub_category: Optional[str] = None
+    branch: Optional[str] = None
 
 @router.get("/menu")
 async def get_menu(admin=Depends(SecurityEngine.verify_token)):
@@ -321,7 +319,8 @@ async def add_menu_item(
         "name": payload.name, 
         "category": payload.category, 
         "price": payload.price, 
-        "is_active": True
+        "is_active": True,
+        "branch": payload.branch or "Smartgrill"
     }
     if payload.category.lower() == "meat cuts" and payload.sub_category:
         db_payload["sub_category"] = payload.sub_category.lower()
@@ -354,6 +353,8 @@ async def update_menu_item(
         update_data["price"] = payload.price
     if payload.sub_category is not None:
         update_data["sub_category"] = payload.sub_category.lower()
+    if payload.branch is not None:
+        update_data["branch"] = payload.branch
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid update fields provided.")
@@ -450,7 +451,6 @@ async def update_user_status(user_id: str, payload: UserBlockRequest, request: R
 @router.delete("/users/{user_id}")
 async def delete_user_account(user_id: str, request: Request, admin=Depends(SecurityEngine.verify_token)):
     try:
-        # Permanently remove the row so the username/email can be reused
         supabase.table("cashiers").delete().eq("id", user_id).execute()
         await redis_client.delete(f"session:{user_id}")
         
@@ -660,7 +660,6 @@ async def get_live_sales(
     if not business_date:
         _, business_date = ShiftEngine.calculate_current_shift()
 
-    # Normalize branch key for caching
     branch_key = branch.strip().lower() if branch else "all"
     cache_key = f"dashboard:analytics:{business_date}:{branch_key}"
     
@@ -674,7 +673,6 @@ async def get_live_sales(
         pass 
 
     try:
-        # --- FILTER SALES BY BRANCH IF SPECIFIED ---
         sales_query = supabase.table("sales").select("*").eq("business_date", business_date)
         if branch and branch not in ["All", "All Branches"]:
             sales_query = sales_query.eq("branch", branch)
@@ -705,7 +703,6 @@ async def get_live_sales(
                 s["branch"] = s.get("branch", "N/A")
                 s["item_summary"] = ", ".join(items_map.get(s["id"], []))
 
-        # --- FILTER EXPENSES BY BRANCH IF SPECIFIED ---
         exp_query = supabase.table("expenses").select("*").eq("business_date", business_date)
         if branch and branch not in ["All", "All Branches"]:
             exp_query = exp_query.eq("branch", branch)
@@ -736,7 +733,6 @@ async def get_live_sales(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database fetch failed for live sales: {str(e)}")
 
-    
 # ==========================================
 # DEEP BUSINESS INTELLIGENCE (CACHE-ASIDE)
 # ==========================================
@@ -968,7 +964,7 @@ async def register_cashier(
             "username": username, 
             "pin_hash": pin_hash, 
             "assigned_shift": assigned_shift,
-            "branch": target_branch,  # Saved to database
+            "branch": target_branch, 
             "status": "ACTIVE"
         }).execute()
         return {"status": "success"}
@@ -1150,7 +1146,7 @@ async def add_inventory_batch(payload: InventoryBatchCreate, request: Request, a
             "cost": round(item_cost, 2),
             "payment_method": payload.payment_method.upper(),
             "status": "ACTIVE",
-            "branch": target_branch,  # Branch assignment
+            "branch": target_branch, 
             "carried_over_from": carried_over_ids[0] if carried_over_ids else None,
             "recorded_by": admin_id
         }
@@ -1428,7 +1424,6 @@ async def deplete_inventory_batch(payload: InventoryDeplete, admin=Depends(Secur
 
 @router.post("/inventory/audit")
 async def audit_inventory_batch(payload: InventoryAudit, admin=Depends(SecurityEngine.verify_token)):
-    """Allows admin to update remaining stock without closing/depleting the batch."""
     try:
         res = supabase.table("inventory_batches").select("*").eq("id", payload.batch_id).eq("status", "ACTIVE").execute()
         if not res.data:
