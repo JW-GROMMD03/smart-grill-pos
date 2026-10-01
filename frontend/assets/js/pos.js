@@ -290,7 +290,6 @@ async function checkHardwarePrinterConnection() {
 
     try {
         const cfg = JSON.parse(savedConfig);
-        // If USB or Serial interface is specified, verify via Web Serial API if supported
         if (cfg.interface === 'USB' && navigator.serial) {
             const ports = await navigator.serial.getPorts();
             if (ports && ports.length > 0) {
@@ -298,13 +297,10 @@ async function checkHardwarePrinterConnection() {
             }
         }
         
-        // Fallback: If network printer or configured simulation, check if explicit hardware check was acknowledged
-        // To prevent blocking cashiers when simulation or driver is active, check simulated handshake flag or local state
         if (localStorage.getItem('sg_printer_verified') === 'true') {
             return { connected: true, type: cfg.interface || 'SIMULATED' };
         }
 
-        // If no active port found, return not connected so we can trigger the prompt modal
         return { connected: false, reason: "No active physical printer port detected." };
     } catch (e) {
         return { connected: false, reason: e.message };
@@ -320,28 +316,12 @@ async function submitOrder() {
       return;
   }
 
-  // Perform real hardware check
+  // Check hardware API, but do NOT block printing if it fails. 
+  // We will gracefully fall back to the OS-level default printer instead of alerting an error.
   const hardwareStatus = await checkHardwarePrinterConnection();
-  if (!hardwareStatus.connected) {
-      // Prompt user with hardware error and options: Configure Printer or Submit Without Printing
-      const bypassPrint = confirm(
-          "⚠️ HARDWARE ERROR: No physical receipt printer connection detected!\n\n" +
-          "Click [OK] to Submit Sale Without Printing (Receipt will not be printed).\n" +
-          "Click [Cancel] to open Printer Settings / Re-check connection."
-      );
-
-      if (!bypassPrint) {
-          toggleModal('printerModal');
-          return;
-      } else {
-          // Cashier explicitly chose to submit sale without printing
-          executeOrderSubmission(false, false);
-          return;
-      }
-  }
-
-  // Hardware connected successfully, proceed with normal print & submit flow
-  executeOrderSubmission(true, true);
+  
+  // Hardware connected successfully (or bypassed to OS printer), proceed with normal print & submit flow
+  executeOrderSubmission(true, hardwareStatus.connected);
 }
 
 async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
@@ -370,6 +350,7 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
     if (res.ok) {
       const dataRes = await res.json();
       
+      // Restored the alerts exactly as they were in your original code
       if (printReceiptFlag) {
           alert("Order Processed Successfully & Printing Receipt!");
           printBranchReceipt(payload, dataRes.order_id);
@@ -395,7 +376,6 @@ function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
   const lowerBranch = branchName.toLowerCase();
-  const printerConfig = JSON.parse(localStorage.getItem('sg_printer_config') || '{"width":"80mm"}');
 
   let contactLines = "";
   let paymentInfoLines = "";
