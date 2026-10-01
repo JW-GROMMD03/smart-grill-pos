@@ -389,21 +389,18 @@ function printBranchReceipt(orderPayload, orderId) {
   } else if (lowerBranch.includes("smart kitchen")) {
     contactLines = "Tel: 0700-041003 / 0104-041003";
     paymentInfoLines = ""; 
-  } else {
-    contactLines = "";
-    paymentInfoLines = "";
   }
 
   const itemsHtml = orderPayload.items.map((i, idx) => `
     <tr>
-      <td colspan="2" style="padding-top: 6px; font-weight: bold; text-align: left; word-break: break-all;">${idx + 1}. ${i.item_name}</td>
+      <td colspan="2" style="padding-top: 4px; font-weight: bold; text-align: left; word-break: break-all;">${idx + 1}. ${i.item_name}</td>
     </tr>
-    <tr style="border-bottom: 1px dashed #e2e8f0;">
-      <td style="padding-bottom: 4px; text-align: left; color: #475569; font-size: 10px; padding-left: 10px;">
+    <tr>
+      <td style="padding-bottom: 4px; text-align: left; color: #000; font-size: 11px; padding-left: 5px;">
         ${i.quantity} @ ${i.unit_price.toFixed(2)}
       </td>
-      <td style="padding-bottom: 4px; text-align: right; font-weight: bold; font-size: 11px;">
-        KSh ${i.subtotal.toFixed(2)}
+      <td style="padding-bottom: 4px; text-align: right; font-weight: bold; font-size: 12px;">
+        ${i.subtotal.toFixed(2)}
       </td>
     </tr>
   `).join('');
@@ -413,12 +410,10 @@ function printBranchReceipt(orderPayload, orderId) {
     order_id: orderId,
     branch: branchName,
     total: orderPayload.total_amount,
-    timestamp: new Date().toISOString(),
-    items_count: orderPayload.items.reduce((acc, i) => acc + i.quantity, 0),
-    issuer: "HAVYN_TECH_SECURE_POS"
+    timestamp: new Date().toISOString()
   });
 
-  const receiptWindow = window.open('', '_blank', 'width=420,height=750');
+  const receiptWindow = window.open('', '_blank', 'width=350,height=600');
   receiptWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -426,93 +421,61 @@ function printBranchReceipt(orderPayload, orderId) {
         <title>Receipt - ${branchName}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <style>
-          @page { size: auto; margin: 0mm; }
+          /* STRICT THERMAL PRINTER CSS */
+          @page { 
+            margin: 0; 
+          }
           body { 
             font-family: 'Courier New', Courier, monospace; 
-            font-size: 11px; 
-            color: #0f172a; 
-            background: #f1f5f9; 
+            color: #000; 
+            background: #fff; 
             margin: 0; 
-            padding: 20px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 0; 
+            width: 80mm; /* Force exact 80mm thermal paper width */
+            font-size: 12px;
           }
-          .receipt-card {
-            background: #ffffff;
+          .receipt-container {
             width: 100%;
-            max-width: 300px;
-            padding: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-radius: 6px;
+            padding: 4mm;
             box-sizing: border-box;
-          }
-          .action-toolbar {
-            background: #0f172a;
-            color: #fff;
-            padding: 8px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            width: 100%;
-            max-width: 300px;
-            box-sizing: border-box;
-          }
-          .action-toolbar button {
-            background: #4f46e5;
-            color: #fff;
-            font-weight: bold;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-          }
-          .action-toolbar button.secondary {
-            background: #334155;
-            color: #f8fafc;
           }
           .center { text-align: center; }
-          .title { font-weight: 900; font-size: 15px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
-          .branch { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #334155; }
-          .divider { border-top: 1px dashed #94a3b8; margin: 8px 0; }
+          .title { font-weight: bold; font-size: 16px; text-transform: uppercase; margin-bottom: 2px; }
+          .branch { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+          .divider { border-top: 1px dashed #000; margin: 4px 0; }
           table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-          .totals-table { width: 100%; margin-top: 8px; font-size: 11px; }
-          .totals-table td { padding: 3px 0; }
-          .qr-container { text-align: center; margin: 12px 0; }
-          .qr-box { display: inline-block; padding: 6px; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; }
-          .footer { margin-top: 12px; font-size: 10px; text-align: center; border-top: 1px dotted #94a3b8; padding-top: 8px; color: #475569; }
-          .havyn-brand { margin-top: 6px; font-size: 9px; font-weight: bold; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; }
+          .totals-table { width: 100%; margin-top: 4px; font-size: 12px; }
+          .totals-table td { padding: 2px 0; }
+          .qr-container { text-align: center; margin: 8px 0 4px 0; }
+          .qr-box { display: inline-block; }
+          .footer { margin-top: 8px; font-size: 10px; text-align: center; }
+          
+          /* Hide the print button when actually printing */
+          .no-print { margin-bottom: 10px; padding: 10px; background: #f1f5f9; text-align: center; }
+          .no-print button { padding: 6px 12px; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+          
           @media print {
-            body { background: #fff; padding: 0; }
-            .action-toolbar { display: none !important; }
-            .receipt-card { box-shadow: none; padding: 0; max-width: 100%; width: 100%; }
+            .no-print { display: none !important; }
+            body { width: 100%; } 
+            .receipt-container { padding: 2mm; } 
           }
         </style>
       </head>
       <body>
-        <!-- Action Toolbar with Print and Settings Buttons -->
-        <div class="action-toolbar">
-          <span style="font-size: 11px;">🖨️ Thermal Ready</span>
-          <div style="display: flex; gap: 6px;">
-            <button class="secondary" onclick="window.opener.toggleModal('printerModal'); window.close();">⚙ Settings</button>
-            <button onclick="window.print()">🖨 Print</button>
-          </div>
+        <div class="no-print">
+          <button onclick="window.print()">🖨 Print Receipt</button>
         </div>
 
-        <div class="receipt-card">
+        <div class="receipt-container">
           <div class="center">
-            <div style="font-size: 22px; margin-bottom: 2px;">🔥</div>
             <div class="title">SMART GRILL POS</div>
             <div class="branch">${branchName}</div>
-            <div style="font-size: 9px; color: #64748b;">${contactLines}</div>
-            <div style="font-size: 10px; margin-top: 3px; font-weight: bold;">${paymentInfoLines}</div>
+            <div style="font-size: 10px;">${contactLines}</div>
+            <div style="font-size: 11px; margin-top: 2px; font-weight: bold;">${paymentInfoLines}</div>
           </div>
           
           <div class="divider"></div>
-          <div style="font-size: 10px; line-height: 1.4; color: #334155;">
+          <div style="font-size: 11px; line-height: 1.3;">
             <strong>OFFICIAL TICKET</strong><br>
             Receipt # : <strong>${String(orderId).toUpperCase()}</strong><br>
             Date/Time : ${new Date().toLocaleString()}<br>
@@ -522,9 +485,9 @@ function printBranchReceipt(orderPayload, orderId) {
           <div class="divider"></div>
           <table>
             <thead>
-              <tr style="border-bottom: 1px solid #0f172a; font-size: 10px; color: #475569;">
-                <th style="text-align: left; padding-bottom: 3px;">DESCRIPTION</th>
-                <th style="text-align: right; padding-bottom: 3px;">AMOUNT</th>
+              <tr style="border-bottom: 1px solid #000; font-size: 11px;">
+                <th style="text-align: left; padding-bottom: 2px;">DESCRIPTION</th>
+                <th style="text-align: right; padding-bottom: 2px;">AMT</th>
               </tr>
             </thead>
             <tbody>
@@ -535,29 +498,27 @@ function printBranchReceipt(orderPayload, orderId) {
           <div class="divider"></div>
           <table class="totals-table">
             <tr>
-              <td style="text-align: left; color: #64748b;">ITEMS COUNT:</td>
+              <td style="text-align: left;">ITEMS COUNT:</td>
               <td style="text-align: right; font-weight: bold;">${orderPayload.items.reduce((acc, i) => acc + i.quantity, 0)}</td>
             </tr>
-            <tr style="font-weight: bold; font-size: 13px; border-top: 1px solid #0f172a; border-bottom: 1px solid #0f172a;">
-              <td style="padding: 5px 0;">TOTAL DUE:</td>
-              <td style="text-align: right; padding: 5px 0;">KSh ${orderPayload.total_amount.toFixed(2)}</td>
+            <tr style="font-weight: bold; font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000;">
+              <td style="padding: 4px 0;">TOTAL DUE:</td>
+              <td style="text-align: right; padding: 4px 0;">KSh ${orderPayload.total_amount.toFixed(2)}</td>
             </tr>
             <tr>
-              <td style="padding-top: 5px; color: #64748b;">PAID VIA:</td>
-              <td style="text-align: right; text-transform: uppercase; padding-top: 5px; font-weight: bold;">${orderPayload.payment_method}</td>
+              <td style="padding-top: 4px;">PAID VIA:</td>
+              <td style="text-align: right; text-transform: uppercase; padding-top: 4px; font-weight: bold;">${orderPayload.payment_method}</td>
             </tr>
           </table>
 
-          <!-- UNIQUE VERIFICATION QR CODE -->
           <div class="qr-container">
             <div class="qr-box" id="receiptQrCode"></div>
-            <div style="font-size: 7px; font-family: monospace; margin-top: 3px; color: #64748b; letter-spacing: 0.5px;">ADMIN VERIFICATION QR</div>
           </div>
 
           <div class="footer">
-            <p><strong>THANK YOU FOR DINING WITH US!</strong></p>
-            <p style="color: #64748b;">Goods once sold are not returnable.</p>
-            <div class="havyn-brand">Powered by HAVYN tech solutions</div>
+            <p style="margin: 2px 0; font-weight: bold;">THANK YOU FOR DINING WITH US!</p>
+            <p style="margin: 2px 0; font-size: 9px;">Goods once sold are not returnable.</p>
+            <div style="margin-top: 4px; font-size: 9px; font-weight: bold;">HAVYN TECH SOLUTIONS</div>
           </div>
         </div>
 
@@ -566,17 +527,15 @@ function printBranchReceipt(orderPayload, orderId) {
             try {
               new QRCode(document.getElementById("receiptQrCode"), {
                 text: ${JSON.stringify(verificationData)},
-                width: 80,
-                height: 80,
-                colorDark: "#0f172a",
+                width: 70,
+                height: 70,
+                colorDark: "#000000",
                 colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
+                correctLevel: QRCode.CorrectLevel.L
               });
             } catch(e) {}
-
-            setTimeout(() => {
-              window.print();
-            }, 400);
+            
+            setTimeout(() => { window.print(); }, 400);
           }
         </script>
       </body>
