@@ -316,11 +316,7 @@ async function submitOrder() {
       return;
   }
 
-  // Check hardware API, but do NOT block printing if it fails. 
-  // We will gracefully fall back to the OS-level default printer instead of alerting an error.
   const hardwareStatus = await checkHardwarePrinterConnection();
-  
-  // Hardware connected successfully (or bypassed to OS printer), proceed with normal print & submit flow
   executeOrderSubmission(true, hardwareStatus.connected);
 }
 
@@ -350,7 +346,6 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
     if (res.ok) {
       const dataRes = await res.json();
       
-      // Restored the alerts exactly as they were in your original code
       if (printReceiptFlag) {
           alert("Order Processed Successfully & Printing Receipt!");
           printBranchReceipt(payload, dataRes.order_id);
@@ -370,7 +365,7 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
 }
 
 // =========================================================================
-// TOP-TIER RESTAURANT THERMAL RECEIPT GENERATOR WITH VERIFICATION QR CODE
+// COMPACT RESTAURANT THERMAL RECEIPT GENERATOR (PAPER-SAVING)
 // =========================================================================
 function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -393,24 +388,24 @@ function printBranchReceipt(orderPayload, orderId) {
 
   const itemsHtml = orderPayload.items.map((i, idx) => `
     <tr>
-      <td colspan="2" style="padding-top: 4px; font-weight: bold; text-align: left; word-break: break-all;">${idx + 1}. ${i.item_name}</td>
+      <td colspan="2" style="padding-top: 2px; font-weight: bold; text-align: left; word-break: break-all;">${idx + 1}. ${i.item_name}</td>
     </tr>
     <tr>
-      <td style="padding-bottom: 4px; text-align: left; color: #000; font-size: 11px; padding-left: 5px;">
+      <td style="padding-bottom: 2px; text-align: left; color: #000; font-size: 10px; padding-left: 5px;">
         ${i.quantity} @ ${i.unit_price.toFixed(2)}
       </td>
-      <td style="padding-bottom: 4px; text-align: right; font-weight: bold; font-size: 12px;">
+      <td style="padding-bottom: 2px; text-align: right; font-weight: bold; font-size: 11px;">
         ${i.subtotal.toFixed(2)}
       </td>
     </tr>
   `).join('');
 
-  // Encrypted Verification Payload for Admin QR Code Scanner
+  // Comprehensive QR Code verification payload containing Branch, Items, Time, and Receipt Number
   const verificationData = JSON.stringify({
-    order_id: orderId,
+    receipt_no: String(orderId).toUpperCase(),
     branch: branchName,
-    total: orderPayload.total_amount,
-    timestamp: new Date().toISOString()
+    time: new Date().toLocaleString(),
+    items: orderPayload.items.map(i => `${i.quantity}x ${i.item_name}`)
   });
 
   const receiptWindow = window.open('', '_blank', 'width=350,height=600');
@@ -421,43 +416,40 @@ function printBranchReceipt(orderPayload, orderId) {
         <title>Receipt - ${branchName}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <style>
-          /* STRICT THERMAL PRINTER CSS */
-          @page { 
-            margin: 0; 
-          }
+          /* COMPACT PAPER-SAVING THERMAL PRINTER CSS */
+          @page { margin: 0; }
           body { 
             font-family: 'Courier New', Courier, monospace; 
             color: #000; 
             background: #fff; 
             margin: 0; 
             padding: 0; 
-            width: 80mm; /* Force exact 80mm thermal paper width */
-            font-size: 12px;
+            width: 80mm; 
+            font-size: 11px;
           }
           .receipt-container {
             width: 100%;
-            padding: 4mm;
+            padding: 2mm 3mm;
             box-sizing: border-box;
           }
           .center { text-align: center; }
-          .title { font-weight: bold; font-size: 16px; text-transform: uppercase; margin-bottom: 2px; }
-          .branch { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
-          .divider { border-top: 1px dashed #000; margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-          .totals-table { width: 100%; margin-top: 4px; font-size: 12px; }
-          .totals-table td { padding: 2px 0; }
-          .qr-container { text-align: center; margin: 8px 0 4px 0; }
+          .title { font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 1px; }
+          .branch { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+          .divider { border-top: 1px dashed #000; margin: 3px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+          .totals-table { width: 100%; margin-top: 2px; font-size: 11px; }
+          .totals-table td { padding: 1px 0; }
+          .qr-container { text-align: center; margin: 4px 0 2px 0; }
           .qr-box { display: inline-block; }
-          .footer { margin-top: 8px; font-size: 10px; text-align: center; }
+          .footer { margin-top: 4px; font-size: 9px; text-align: center; }
           
-          /* Hide the print button when actually printing */
-          .no-print { margin-bottom: 10px; padding: 10px; background: #f1f5f9; text-align: center; }
-          .no-print button { padding: 6px 12px; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+          .no-print { margin-bottom: 8px; padding: 6px; background: #f1f5f9; text-align: center; }
+          .no-print button { padding: 4px 10px; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px;}
           
           @media print {
             .no-print { display: none !important; }
             body { width: 100%; } 
-            .receipt-container { padding: 2mm; } 
+            .receipt-container { padding: 1mm 2mm; } 
           }
         </style>
       </head>
@@ -470,24 +462,23 @@ function printBranchReceipt(orderPayload, orderId) {
           <div class="center">
             <div class="title">SMART GRILL POS</div>
             <div class="branch">${branchName}</div>
-            <div style="font-size: 10px;">${contactLines}</div>
-            <div style="font-size: 11px; margin-top: 2px; font-weight: bold;">${paymentInfoLines}</div>
+            <div style="font-size: 9px;">${contactLines}</div>
+            <div style="font-size: 10px; margin-top: 1px; font-weight: bold;">${paymentInfoLines}</div>
           </div>
           
           <div class="divider"></div>
-          <div style="font-size: 11px; line-height: 1.3;">
-            <strong>OFFICIAL TICKET</strong><br>
-            Receipt # : <strong>${String(orderId).toUpperCase()}</strong><br>
-            Date/Time : ${new Date().toLocaleString()}<br>
-            Cashier   : ${user.full_name || 'Staff'}
+          <div style="font-size: 10px; line-height: 1.2;">
+            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Receipt #: <strong>${String(orderId).toUpperCase()}</strong></div>
+            <div>Date/Time: ${new Date().toLocaleString()}</div>
+            <div>Cashier: ${user.full_name || 'Staff'}</div>
           </div>
           
           <div class="divider"></div>
           <table>
             <thead>
-              <tr style="border-bottom: 1px solid #000; font-size: 11px;">
-                <th style="text-align: left; padding-bottom: 2px;">DESCRIPTION</th>
-                <th style="text-align: right; padding-bottom: 2px;">AMT</th>
+              <tr style="border-bottom: 1px solid #000; font-size: 10px;">
+                <th style="text-align: left; padding-bottom: 1px;">DESCRIPTION</th>
+                <th style="text-align: right; padding-bottom: 1px;">AMT</th>
               </tr>
             </thead>
             <tbody>
@@ -501,13 +492,13 @@ function printBranchReceipt(orderPayload, orderId) {
               <td style="text-align: left;">ITEMS COUNT:</td>
               <td style="text-align: right; font-weight: bold;">${orderPayload.items.reduce((acc, i) => acc + i.quantity, 0)}</td>
             </tr>
-            <tr style="font-weight: bold; font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000;">
-              <td style="padding: 4px 0;">TOTAL DUE:</td>
-              <td style="text-align: right; padding: 4px 0;">KSh ${orderPayload.total_amount.toFixed(2)}</td>
+            <tr style="font-weight: bold; font-size: 12px; border-top: 1px dashed #000; border-bottom: 1px dashed #000;">
+              <td style="padding: 2px 0;">TOTAL DUE:</td>
+              <td style="text-align: right; padding: 2px 0;">KSh ${orderPayload.total_amount.toFixed(2)}</td>
             </tr>
             <tr>
-              <td style="padding-top: 4px;">PAID VIA:</td>
-              <td style="text-align: right; text-transform: uppercase; padding-top: 4px; font-weight: bold;">${orderPayload.payment_method}</td>
+              <td style="padding-top: 2px;">PAID VIA:</td>
+              <td style="text-align: right; text-transform: uppercase; padding-top: 2px; font-weight: bold;">${orderPayload.payment_method}</td>
             </tr>
           </table>
 
@@ -516,9 +507,9 @@ function printBranchReceipt(orderPayload, orderId) {
           </div>
 
           <div class="footer">
-            <p style="margin: 2px 0; font-weight: bold;">THANK YOU FOR DINING WITH US!</p>
-            <p style="margin: 2px 0; font-size: 9px;">Goods once sold are not returnable.</p>
-            <div style="margin-top: 4px; font-size: 9px; font-weight: bold;">HAVYN TECH SOLUTIONS</div>
+            <p style="margin: 1px 0; font-weight: bold;">THANK YOU FOR DINING WITH US!</p>
+            <p style="margin: 1px 0; font-size: 8px;">Goods once sold are not returnable.</p>
+            <div style="margin-top: 2px; font-size: 8px; font-weight: bold;">HAVYN TECH SOLUTIONS</div>
           </div>
         </div>
 
@@ -527,8 +518,8 @@ function printBranchReceipt(orderPayload, orderId) {
             try {
               new QRCode(document.getElementById("receiptQrCode"), {
                 text: ${JSON.stringify(verificationData)},
-                width: 70,
-                height: 70,
+                width: 50,
+                height: 50,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.L
