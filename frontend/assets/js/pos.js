@@ -365,7 +365,7 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
 }
 
 // =========================================================================
-// COMPACT RESTAURANT THERMAL RECEIPT GENERATOR (PAPER-SAVING)
+// COMPACT RESTAURANT THERMAL RECEIPT GENERATOR (PAPER-SAVING + LOGO)
 // =========================================================================
 function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -400,7 +400,7 @@ function printBranchReceipt(orderPayload, orderId) {
     </tr>
   `).join('');
 
-  // Comprehensive QR Code verification payload containing Branch, Items, Time, and Receipt Number
+  // Comprehensive QR Code verification payload containing Receipt Number, Branch, Time, and Items
   const verificationData = JSON.stringify({
     receipt_no: String(orderId).toUpperCase(),
     branch: branchName,
@@ -460,6 +460,7 @@ function printBranchReceipt(orderPayload, orderId) {
 
         <div class="receipt-container">
           <div class="center">
+            <div style="font-size: 18px; margin-bottom: 1px;">🔥</div>
             <div class="title">SMART GRILL POS</div>
             <div class="branch">${branchName}</div>
             <div style="font-size: 9px;">${contactLines}</div>
