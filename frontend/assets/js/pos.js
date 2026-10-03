@@ -128,7 +128,7 @@ async function loadDynamicMenu() {
     if (!items || !Array.isArray(items) || items.length === 0) {
         if(container) {
           container.innerHTML = `
-            <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-xs">
+            <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
               <span class="text-4xl mb-3">🍽️</span>
               <p class="font-extrabold text-amber-600 dark:text-amber-400 text-sm">The catalog is currently empty.</p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Waiting for the Admin to add and activate menu items.</p>
@@ -177,35 +177,35 @@ function renderMenuGrid(items) {
   const chicken = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('chicken')).sort((a,b) => a.price - b.price);
   const boneSoup = items.filter(i => i.category === 'MEAT CUTS' && (i.name.toLowerCase().includes('bone soup') || i.sub_category === 'bone_soup')).sort((a,b) => a.price - b.price);
 
-  const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg p-2.5 text-left flex flex-col justify-between shadow-xs transition"><span class="text-slate-900 dark:text-slate-200 text-[11px] font-bold">${i.name}</span><span class="text-amber-600 dark:text-amber-400 text-xs font-black mt-1">${i.price}/=</span></button>`;
-  const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-center transition shadow-xs"><span class="text-amber-600 dark:text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
+  const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-left flex flex-col justify-between shadow-2xs transition"><span class="text-slate-900 dark:text-slate-200 text-xs font-bold">${i.name}</span><span class="text-amber-600 dark:text-amber-400 text-xs font-black mt-2">${i.price}/=</span></button>`;
+  const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-center transition shadow-2xs"><span class="text-amber-600 dark:text-amber-400 text-[11px] font-bold">${i.price}/=</span></button>`;
 
   container.innerHTML = `
     <div class="mb-5">
-       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
-       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">${tilapia.map(blockBtn).join('')}</div>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5 flex items-center gap-1.5"><span>🐟</span> TILAPIA VARIATIONS</h3>
+       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">${tilapia.map(blockBtn).join('')}</div>
     </div>
     <div class="mb-5">
-       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> MBUTA VARIATIONS</h3>
-       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">${mbuta.map(blockBtn).join('')}</div>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5 flex items-center gap-1.5"><span>🐟</span> MBUTA VARIATIONS</h3>
+       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">${mbuta.map(blockBtn).join('')}</div>
     </div>
     <div class="mb-5">
-       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5 flex items-center gap-1.5"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Mbuzi</p><div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Beef</p><div class="grid grid-cols-3 gap-1.5">${beef.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Chicken</p><div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Bone Soup</p><div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div></div>
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs"><p class="text-slate-900 dark:text-slate-200 text-xs font-extrabold mb-2.5">Mbuzi</p><div class="grid grid-cols-3 gap-2">${mbuzi.map(inlineBtn).join('')}</div></div>
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs"><p class="text-slate-900 dark:text-slate-200 text-xs font-extrabold mb-2.5">Beef</p><div class="grid grid-cols-3 gap-2">${beef.map(inlineBtn).join('')}</div></div>
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs"><p class="text-slate-900 dark:text-slate-200 text-xs font-extrabold mb-2.5">Chicken</p><div class="grid grid-cols-3 gap-2">${chicken.map(inlineBtn).join('')}</div></div>
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs"><p class="text-slate-900 dark:text-slate-200 text-xs font-extrabold mb-2.5">Bone Soup</p><div class="grid grid-cols-3 gap-2">${boneSoup.map(inlineBtn).join('')}</div></div>
        </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍲</span> WETFRY</h3><div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥬</span> GREENS & KACHUMBARI</h3><div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥔</span> MUKIMO / MATAHA</h3><div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍛</span> UGALI & TEA</h3><div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥣</span> OTHERS</h3><div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥤</span> DRINKS & WATER</h3><div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍟</span> CHIPS & PACKAGING</h3><div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🍲</span> WETFRY</h3><div class="grid grid-cols-3 gap-2.5">${wetfry.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🥬</span> GREENS & KACHUMBARI</h3><div class="grid grid-cols-2 gap-2.5">${greens.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🥔</span> MUKIMO / MATAHA</h3><div class="grid grid-cols-2 gap-2.5">${mukimo.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🍛</span> UGALI & TEA</h3><div class="grid grid-cols-2 gap-2.5">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🥣</span> OTHERS</h3><div class="grid grid-cols-2 gap-2.5">${others.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🥤</span> DRINKS & WATER</h3><div class="grid grid-cols-2 gap-2.5">${drinks.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2.5"><span>🍟</span> CHIPS & PACKAGING</h3><div class="grid grid-cols-3 gap-2.5">${chips.map(blockBtn).join('')}</div></div>
     </div>
   `;
 }
@@ -264,9 +264,9 @@ function renderCart() {
   container.innerHTML = cart.map((item, index) => {
     grandTotal += item.subtotal;
     return `
-      <div class="flex justify-between items-center bg-white dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs mb-2 shadow-xs">
-        <div><p class="font-bold text-slate-900 dark:text-slate-200">${item.item_name}</p><p class="text-[10px] text-slate-500 dark:text-slate-400">${item.quantity} x KSh ${item.unit_price}</p></div>
-        <div class="flex items-center gap-3"><span class="font-bold text-amber-600 dark:text-amber-400">KSh ${item.subtotal}</span><button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-600 dark:text-red-400 font-bold px-1.5 py-0.5 bg-red-50 dark:bg-red-500/10 rounded">✕</button></div>
+      <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs mb-2 shadow-2xs">
+        <div><p class="font-bold text-slate-900 dark:text-slate-200">${item.item_name}</p><p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${item.quantity} x KSh ${item.unit_price}</p></div>
+        <div class="flex items-center gap-3"><span class="font-bold text-amber-600 dark:text-amber-400">KSh ${item.subtotal}</span><button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-600 dark:text-red-400 font-bold px-2 py-1 bg-red-50 dark:bg-red-500/10 rounded-lg hover:bg-red-100 transition">✕</button></div>
       </div>
     `;
   }).join('');
@@ -342,11 +342,11 @@ async function checkHardwarePrinterConnection() {
 }
 
 async function submitOrder() {
-  // Check if user is on a mobile/phone device
+  // STRICT MOBILE DETECTION: Skip printer checks & receipt printing entirely on phones/tablets
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 1024;
 
   if (isMobile) {
-      // Skip printer checks and config requirements entirely on mobile, just record order
+      // Record order directly without requesting receipt printing or printer verification
       await executeOrderSubmission(false, false);
       return;
   }
@@ -598,14 +598,14 @@ function renderHoldQueue() {
   }
 
   container.innerHTML = holdQueue.map((order, index) => `
-    <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs shadow-xs">
+    <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shadow-2xs">
       <div>
         <p class="font-bold text-amber-600 dark:text-amber-400">Hold #${index + 1} <span class="text-slate-400 font-normal ml-2">${order.time}</span></p>
         <p class="text-slate-700 dark:text-slate-300 mt-1">KSh ${order.total} (${order.items.length} items)</p>
       </div>
       <div class="flex gap-2">
-        <button onclick="resumeHold(${index})" class="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded font-bold hover:bg-amber-100 dark:hover:bg-amber-500/20">Resume</button>
-        <button onclick="requestAdminAction('hold', '${order.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-1.5 rounded font-bold hover:bg-red-100 dark:hover:bg-red-500/20">Drop</button>
+        <button onclick="resumeHold(${index})" class="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1.5 rounded-lg font-bold hover:bg-amber-100 transition">Resume</button>
+        <button onclick="requestAdminAction('hold', '${order.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1.5 rounded-lg font-bold hover:bg-red-100 transition">Drop</button>
       </div>
     </div>
   `).join('');
@@ -659,12 +659,12 @@ async function loadReceipts() {
     if (data.transactions.length === 0) html += `<p class="text-slate-400 text-xs mb-4">No sales recorded yet.</p>`;
     
     html += data.transactions.map(t => `
-      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-xs">
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-2xs">
         <div>
           <span class="font-bold text-slate-900 dark:text-slate-200">Sale #${t.id.split('-')[0]}</span>
-          <p class="text-slate-600 dark:text-slate-400 mt-0.5">KSh ${t.total_amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1 text-slate-700 dark:text-slate-400">${t.payment_method}</span></p>
+          <p class="text-slate-600 dark:text-slate-400 mt-0.5">KSh ${t.total_amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[9px] ml-1 text-slate-700 dark:text-slate-400">${t.payment_method}</span></p>
         </div>
-        <button onclick="requestAdminAction('sale', '${t.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded font-bold hover:bg-red-100 dark:hover:bg-red-500/20">Delete</button>
+        <button onclick="requestAdminAction('sale', '${t.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-lg font-bold hover:bg-red-100 transition">Delete</button>
       </div>
     `).join('');
     
@@ -672,12 +672,12 @@ async function loadReceipts() {
     if (data.expenses.length === 0) html += `<p class="text-slate-400 text-xs">No expenses recorded yet.</p>`;
     
     html += data.expenses.map(ex => `
-      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-xs">
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-2xs">
         <div>
           <span class="font-bold text-slate-900 dark:text-slate-200">${ex.description}</span>
-          <p class="text-red-600 dark:text-red-400 mt-0.5 font-bold">- KSh ${ex.amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1 text-slate-600 dark:text-slate-400">${ex.payment_type}</span></p>
+          <p class="text-red-600 dark:text-red-400 mt-0.5 font-bold">- KSh ${ex.amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[9px] ml-1 text-slate-600 dark:text-slate-400">${ex.payment_type}</span></p>
         </div>
-        <button onclick="requestAdminAction('expense_delete', '${ex.id}')" class="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-bold hover:text-red-600 dark:hover:text-red-400">Delete</button>
+        <button onclick="requestAdminAction('expense_delete', '${ex.id}')" class="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg font-bold hover:text-red-600 transition">Delete</button>
       </div>
     `).join('');
     
