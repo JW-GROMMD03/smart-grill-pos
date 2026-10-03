@@ -8,10 +8,44 @@ let pendingItem = null;
 let cashierWs = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Enforce Light Mode as default if no preference is saved
+  if (!localStorage.getItem('sg_theme')) {
+    localStorage.setItem('sg_theme', 'light');
+  }
+  applyTheme(localStorage.getItem('sg_theme'));
+
+  // Attach theme toggle listener if button exists in DOM
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', toggleAppTheme);
+  }
+
   loadDynamicMenu();
   updateState(); 
   connectCashierSocket();
 });
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'dark') {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+  localStorage.setItem('sg_theme', theme);
+
+  // Update toggle icon if present
+  const themeIcon = document.getElementById('themeIcon');
+  if (themeIcon) {
+    themeIcon.innerText = theme === 'dark' ? '☀️' : '🌙';
+  }
+}
+
+function toggleAppTheme() {
+  const current = localStorage.getItem('sg_theme') || 'light';
+  const next = current === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+}
 
 function connectCashierSocket() {
     const token = localStorage.getItem('sg_token');
@@ -94,10 +128,10 @@ async function loadDynamicMenu() {
     if (!items || !Array.isArray(items) || items.length === 0) {
         if(container) {
           container.innerHTML = `
-            <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-slate-800/50 border border-slate-700/50 rounded-2xl">
+            <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-xs">
               <span class="text-4xl mb-3">🍽️</span>
-              <p class="font-extrabold text-amber-400 text-sm">The catalog is currently empty.</p>
-              <p class="text-xs text-slate-400 mt-2">Waiting for the Admin to add and activate menu items.</p>
+              <p class="font-extrabold text-amber-600 dark:text-amber-400 text-sm">The catalog is currently empty.</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Waiting for the Admin to add and activate menu items.</p>
             </div>
           `;
         }
@@ -109,11 +143,11 @@ async function loadDynamicMenu() {
     console.error("Failed to load dynamic menu", e);
     if(container) {
       container.innerHTML = `
-        <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-red-500/10 border border-red-500/20 rounded-2xl">
+        <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl">
           <span class="text-4xl mb-3">⚠️</span>
-          <p class="font-extrabold text-red-400 text-sm">Network Error.</p>
-          <p class="text-xs text-slate-400 mt-2">The system encountered an error connecting to the database. Please check your connection and refresh.</p>
-          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-slate-800 text-slate-200 text-xs font-bold rounded hover:bg-slate-700">Reload Menu</button>
+          <p class="font-extrabold text-red-600 dark:text-red-400 text-sm">Network Error.</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">The system encountered an error connecting to the database. Please check your connection and refresh.</p>
+          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-slate-900 dark:bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-800 dark:hover:bg-slate-700">Reload Menu</button>
         </div>
       `;
     }
@@ -143,35 +177,35 @@ function renderMenuGrid(items) {
   const chicken = items.filter(i => i.category === 'MEAT CUTS' && i.name.toLowerCase().includes('chicken')).sort((a,b) => a.price - b.price);
   const boneSoup = items.filter(i => i.category === 'MEAT CUTS' && (i.name.toLowerCase().includes('bone soup') || i.sub_category === 'bone_soup')).sort((a,b) => a.price - b.price);
 
-  const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900/60 hover:bg-slate-800 border border-slate-700/50 rounded-lg p-2.5 text-left flex flex-col justify-between shadow-sm transition"><span class="text-slate-200 text-[11px] font-bold">${i.name}</span><span class="text-amber-400 text-xs font-black mt-1">${i.price}/=</span></button>`;
-  const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded p-1.5 text-center transition"><span class="text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
+  const blockBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/50 rounded-lg p-2.5 text-left flex flex-col justify-between shadow-xs transition"><span class="text-slate-900 dark:text-slate-200 text-[11px] font-bold">${i.name}</span><span class="text-amber-600 dark:text-amber-400 text-xs font-black mt-1">${i.price}/=</span></button>`;
+  const inlineBtn = (i) => `<button onclick="triggerQuantityModal('${i.name}', '${i.category}', ${i.price})" class="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-center transition shadow-xs"><span class="text-amber-600 dark:text-amber-400 text-[10px] font-bold">${i.price}/=</span></button>`;
 
   container.innerHTML = `
     <div class="mb-5">
-       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> TILAPIA VARIATIONS</h3>
        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">${tilapia.map(blockBtn).join('')}</div>
     </div>
     <div class="mb-5">
-       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> MBUTA VARIATIONS</h3>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🐟</span> MBUTA VARIATIONS</h3>
        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">${mbuta.map(blockBtn).join('')}</div>
     </div>
     <div class="mb-5">
-       <h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
+       <h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1"><span>🥩</span> MEAT CUTS (WITH KG SPECIFICATION)</h3>
        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Mbuzi</p><div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Beef</p><div class="grid grid-cols-3 gap-1.5">${beef.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Chicken</p><div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div></div>
-          <div class="bg-slate-900/40 p-2.5 rounded-xl border border-slate-800"><p class="text-slate-200 text-xs font-bold mb-2">Bone Soup</p><div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Mbuzi</p><div class="grid grid-cols-3 gap-1.5">${mbuzi.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Beef</p><div class="grid grid-cols-3 gap-1.5">${beef.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Chicken</p><div class="grid grid-cols-3 gap-1.5">${chicken.map(inlineBtn).join('')}</div></div>
+          <div class="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800"><p class="text-slate-900 dark:text-slate-200 text-xs font-bold mb-2">Bone Soup</p><div class="grid grid-cols-3 gap-1.5">${boneSoup.map(inlineBtn).join('')}</div></div>
        </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍲</span> WETFRY</h3><div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥬</span> GREENS & KACHUMBARI</h3><div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥔</span> MUKIMO / MATAHA</h3><div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍛</span> UGALI & TEA</h3><div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥣</span> OTHERS</h3><div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥤</span> DRINKS & WATER</h3><div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div></div>
-        <div><h3 class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍟</span> CHIPS & PACKAGING</h3><div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍲</span> WETFRY</h3><div class="grid grid-cols-3 gap-2">${wetfry.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥬</span> GREENS & KACHUMBARI</h3><div class="grid grid-cols-2 gap-2">${greens.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥔</span> MUKIMO / MATAHA</h3><div class="grid grid-cols-2 gap-2">${mukimo.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍛</span> UGALI & TEA</h3><div class="grid grid-cols-2 gap-2">${ugali.map(blockBtn).join('')} ${tea.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥣</span> OTHERS</h3><div class="grid grid-cols-2 gap-2">${others.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🥤</span> DRINKS & WATER</h3><div class="grid grid-cols-2 gap-2">${drinks.map(blockBtn).join('')}</div></div>
+        <div><h3 class="text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase tracking-widest mb-2"><span>🍟</span> CHIPS & PACKAGING</h3><div class="grid grid-cols-3 gap-2">${chips.map(blockBtn).join('')}</div></div>
     </div>
   `;
 }
@@ -220,7 +254,7 @@ function addToCart(name, category, price, qty = 1) {
 function renderCart() {
   const container = document.getElementById('cartList');
   if (cart.length === 0) {
-    container.innerHTML = `<p class="text-slate-500 text-xs text-center py-10">No items selected yet.</p>`;
+    container.innerHTML = `<p class="text-slate-400 text-xs text-center py-10">No items selected yet.</p>`;
     document.getElementById('cartTotal').innerText = '0.00';
     validatePaymentInputs();
     return;
@@ -230,9 +264,9 @@ function renderCart() {
   container.innerHTML = cart.map((item, index) => {
     grandTotal += item.subtotal;
     return `
-      <div class="flex justify-between items-center bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs mb-2">
-        <div><p class="font-bold text-slate-200">${item.item_name}</p><p class="text-[10px] text-slate-400">${item.quantity} x KSh ${item.unit_price}</p></div>
-        <div class="flex items-center gap-3"><span class="font-bold text-amber-400">KSh ${item.subtotal}</span><button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-400 font-bold px-1.5 py-0.5 bg-red-500/10 rounded">✕</button></div>
+      <div class="flex justify-between items-center bg-white dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs mb-2 shadow-xs">
+        <div><p class="font-bold text-slate-900 dark:text-slate-200">${item.item_name}</p><p class="text-[10px] text-slate-500 dark:text-slate-400">${item.quantity} x KSh ${item.unit_price}</p></div>
+        <div class="flex items-center gap-3"><span class="font-bold text-amber-600 dark:text-amber-400">KSh ${item.subtotal}</span><button onclick="requestAdminAction('cart_remove', '${index}')" class="text-red-600 dark:text-red-400 font-bold px-1.5 py-0.5 bg-red-50 dark:bg-red-500/10 rounded">✕</button></div>
       </div>
     `;
   }).join('');
@@ -400,7 +434,6 @@ function printBranchReceipt(orderPayload, orderId) {
     </tr>
   `).join('');
 
-  // Comprehensive QR Code verification payload containing Receipt Number, Branch, Time, and Items
   const verificationData = JSON.stringify({
     receipt_no: String(orderId).toUpperCase(),
     branch: branchName,
@@ -416,7 +449,6 @@ function printBranchReceipt(orderPayload, orderId) {
         <title>Receipt - ${branchName}</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <style>
-          /* COMPACT PAPER-SAVING THERMAL PRINTER CSS */
           @page { margin: 0; }
           body { 
             font-family: 'Courier New', Courier, monospace; 
@@ -552,19 +584,19 @@ function renderHoldQueue() {
   if(!container) return;
   
   if (holdQueue.length === 0) {
-    container.innerHTML = `<p class="text-slate-500 text-xs text-center py-6">No held orders.</p>`;
+    container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6">No held orders.</p>`;
     return;
   }
 
   container.innerHTML = holdQueue.map((order, index) => `
-    <div class="flex justify-between items-center bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-xs">
+    <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs shadow-xs">
       <div>
-        <p class="font-bold text-amber-400">Hold #${index + 1} <span class="text-slate-500 font-normal ml-2">${order.time}</span></p>
-        <p class="text-slate-300 mt-1">KSh ${order.total} (${order.items.length} items)</p>
+        <p class="font-bold text-amber-600 dark:text-amber-400">Hold #${index + 1} <span class="text-slate-400 font-normal ml-2">${order.time}</span></p>
+        <p class="text-slate-700 dark:text-slate-300 mt-1">KSh ${order.total} (${order.items.length} items)</p>
       </div>
       <div class="flex gap-2">
-        <button onclick="resumeHold(${index})" class="text-amber-400 bg-amber-500/10 px-2 py-1.5 rounded font-bold hover:bg-amber-500/20">Resume</button>
-        <button onclick="requestAdminAction('hold', '${order.id}')" class="text-red-400 bg-red-500/10 px-2 py-1.5 rounded font-bold hover:bg-red-500/20">Drop</button>
+        <button onclick="resumeHold(${index})" class="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded font-bold hover:bg-amber-100 dark:hover:bg-amber-500/20">Resume</button>
+        <button onclick="requestAdminAction('hold', '${order.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-1.5 rounded font-bold hover:bg-red-100 dark:hover:bg-red-500/20">Drop</button>
       </div>
     </div>
   `).join('');
@@ -614,29 +646,29 @@ async function loadReceipts() {
     const data = await res.json();
     const container = document.getElementById('receiptsList');
     
-    let html = `<h4 class="text-xs font-bold text-slate-400 mb-2 border-b border-slate-800 pb-1">SALES (${data.transactions.length})</h4>`;
-    if (data.transactions.length === 0) html += `<p class="text-slate-600 text-xs mb-4">No sales recorded yet.</p>`;
+    let html = `<h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 border-b border-slate-200 dark:border-slate-800 pb-1">SALES (${data.transactions.length})</h4>`;
+    if (data.transactions.length === 0) html += `<p class="text-slate-400 text-xs mb-4">No sales recorded yet.</p>`;
     
     html += data.transactions.map(t => `
-      <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 mb-2 text-xs flex justify-between items-center">
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-xs">
         <div>
-          <span class="font-bold text-slate-200">Sale #${t.id.split('-')[0]}</span>
-          <p class="text-slate-400 mt-0.5">KSh ${t.total_amount} <span class="uppercase bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1">${t.payment_method}</span></p>
+          <span class="font-bold text-slate-900 dark:text-slate-200">Sale #${t.id.split('-')[0]}</span>
+          <p class="text-slate-600 dark:text-slate-400 mt-0.5">KSh ${t.total_amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1 text-slate-700 dark:text-slate-400">${t.payment_method}</span></p>
         </div>
-        <button onclick="requestAdminAction('sale', '${t.id}')" class="text-red-400 bg-red-500/10 px-2 py-1 rounded font-bold hover:bg-red-500/20">Delete</button>
+        <button onclick="requestAdminAction('sale', '${t.id}')" class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded font-bold hover:bg-red-100 dark:hover:bg-red-500/20">Delete</button>
       </div>
     `).join('');
     
-    html += `<h4 class="text-xs font-bold text-slate-400 mt-6 mb-2 border-b border-slate-800 pb-1">EXPENSES (${data.expenses.length})</h4>`;
-    if (data.expenses.length === 0) html += `<p class="text-slate-600 text-xs">No expenses recorded yet.</p>`;
+    html += `<h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 mt-6 mb-2 border-b border-slate-200 dark:border-slate-800 pb-1">EXPENSES (${data.expenses.length})</h4>`;
+    if (data.expenses.length === 0) html += `<p class="text-slate-400 text-xs">No expenses recorded yet.</p>`;
     
     html += data.expenses.map(ex => `
-      <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 mb-2 text-xs flex justify-between items-center">
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-2 text-xs flex justify-between items-center shadow-xs">
         <div>
-          <span class="font-bold text-slate-200">${ex.description}</span>
-          <p class="text-red-400 mt-0.5 font-bold">- KSh ${ex.amount} <span class="uppercase bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1 text-slate-400">${ex.payment_type}</span></p>
+          <span class="font-bold text-slate-900 dark:text-slate-200">${ex.description}</span>
+          <p class="text-red-600 dark:text-red-400 mt-0.5 font-bold">- KSh ${ex.amount} <span class="uppercase bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[9px] ml-1 text-slate-600 dark:text-slate-400">${ex.payment_type}</span></p>
         </div>
-        <button onclick="requestAdminAction('expense_delete', '${ex.id}')" class="text-slate-400 bg-slate-800 px-2 py-1 rounded font-bold hover:text-red-400">Delete</button>
+        <button onclick="requestAdminAction('expense_delete', '${ex.id}')" class="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-bold hover:text-red-600 dark:hover:text-red-400">Delete</button>
       </div>
     `).join('');
     

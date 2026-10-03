@@ -7,23 +7,23 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen flex items-center justify-center relative p-4 bg-slate-900">
+<body class="min-h-screen flex items-center justify-center relative p-4 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
 
-  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent_50%)]"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#e2e8f0,transparent_50%)] dark:bg-[radial-gradient(circle_at_top_right,#1e293b,transparent_50%)]"></div>
 
-  <div class="bg-slate-800/50 backdrop-blur-md border border-slate-700 max-w-md w-full p-8 rounded-2xl shadow-2xl relative z-10 space-y-6">
+  <div class="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 max-w-md w-full p-8 rounded-2xl shadow-xl relative z-10 space-y-6">
     <div class="text-center space-y-2">
-      <div class="inline-block p-3 rounded-full bg-amber-500/10 text-amber-500 mb-2">🔥</div>
-      <h1 class="text-2xl font-extrabold tracking-wider text-white">SMART GRILL POS</h1>
-      <p class="text-xs text-slate-400">Cashier Terminal Login</p>
+      <div class="inline-block p-3 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-500 mb-2">🔥</div>
+      <h1 class="text-2xl font-extrabold tracking-wider text-slate-900 dark:text-white">SMART GRILL POS</h1>
+      <p class="text-xs text-slate-500 dark:text-slate-400">Cashier Terminal Login</p>
     </div>
 
-    <div id="alertBox" class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold text-center break-words"></div>
+    <div id="alertBox" class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold text-center break-words"></div>
 
     <form id="loginForm" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Select Branch</label>
-        <select id="branchSelect" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">Select Branch</label>
+        <select id="branchSelect" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
           <option value="" disabled selected>-- Select Your Branch --</option>
           <option value="Smartgrill">Smartgrill</option>
           <option value="nyama villa">nyama villa</option>
@@ -34,13 +34,13 @@
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-300 uppercase mm-2">Username</label>
-        <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">Username</label>
+        <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-300 uppercase mb-2">4-Digit PIN</label>
-        <input type="password" id="pin" required class="w-full px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition tracking-widest text-center font-mono">
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">4-Digit PIN</label>
+        <input type="password" id="pin" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition tracking-widest text-center font-mono">
       </div>
 
       <button type="submit" id="submitBtn" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-lg active:scale-95 text-sm flex justify-center items-center">
