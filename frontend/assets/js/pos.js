@@ -144,7 +144,7 @@ async function loadDynamicMenu() {
     if(container) {
       container.innerHTML = `
         <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl">
-          <span class="text-4xl mb-3">⚠️</span>
+          <span class="text-4xl mb-3">⚠️️</span>
           <p class="font-extrabold text-red-600 dark:text-red-400 text-sm">Network Error.</p>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">The system encountered an error connecting to the database. Please check your connection and refresh.</p>
           <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-slate-900 dark:bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-800 dark:hover:bg-slate-700">Reload Menu</button>
@@ -348,8 +348,9 @@ function validatePaymentInputs() {
 }
 
 // =========================================================================
-// REAL HARDWARE PRINTER DETECTION & CHECKOUT FLOW
+// HARDWARE DETECTION & ORDER SUBMISSION LOGIC
 // =========================================================================
+
 async function checkHardwarePrinterConnection() {
     const savedConfig = localStorage.getItem('sg_printer_config');
     if (!savedConfig) return { connected: false, reason: "No printer configuration saved." };
@@ -374,15 +375,17 @@ async function checkHardwarePrinterConnection() {
 }
 
 async function submitOrder() {
-  // STRICT MOBILE DETECTION: Skip printer checks & receipt printing entirely on phones/tablets
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 1024;
+  // 1. Mobile Check: Detect Android, iPhone, iPad, etc. using User-Agent.
+  const isMobilePhone = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  if (isMobile) {
-      // Record order directly without requesting receipt printing or printer verification
+  // If mobile is detected, immediately skip ALL printing logic and just save the order to the database.
+  if (isMobilePhone) {
+      // Arguments: (printReceiptFlag = false, hardwareVerifiedFlag = false)
       await executeOrderSubmission(false, false);
-      return;
+      return; 
   }
 
+  // 2. Desktop Check: Proceed with printer verification only if on a computer.
   const printerConfig = localStorage.getItem('sg_printer_config');
   if (!printerConfig) {
       if (confirm("⚠️ No printer configured! Would you like to configure your printer now?")) {
@@ -392,6 +395,8 @@ async function submitOrder() {
   }
 
   const hardwareStatus = await checkHardwarePrinterConnection();
+  
+  // Submit order requesting a receipt print since this is a desktop
   executeOrderSubmission(true, hardwareStatus.connected);
 }
 
@@ -421,6 +426,8 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
     if (res.ok) {
       const dataRes = await res.json();
       
+      // If printReceiptFlag is true (Desktop), it pops up the receipt window.
+      // If printReceiptFlag is false (Mobile), it skips directly to the else block.
       if (printReceiptFlag) {
           alert("Order Processed Successfully & Printing Receipt!");
           printBranchReceipt(payload, dataRes.order_id);
