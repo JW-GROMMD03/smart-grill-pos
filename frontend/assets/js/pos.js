@@ -144,7 +144,7 @@ async function loadDynamicMenu() {
     if(container) {
       container.innerHTML = `
         <div class="col-span-2 md:col-span-3 xl:col-span-5 flex flex-col items-center justify-center py-12 px-4 text-center bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl">
-          <span class="text-4xl mb-3">⚠️️</span>
+          <span class="text-4xl mb-3">⚠️</span>
           <p class="font-extrabold text-red-600 dark:text-red-400 text-sm">Network Error.</p>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">The system encountered an error connecting to the database. Please check your connection and refresh.</p>
           <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-slate-900 dark:bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-800 dark:hover:bg-slate-700">Reload Menu</button>
@@ -378,14 +378,13 @@ async function submitOrder() {
   // 1. Mobile Check: Detect Android, iPhone, iPad, etc. using User-Agent.
   const isMobilePhone = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // If mobile is detected, immediately skip ALL printing logic and just save the order to the database.
   if (isMobilePhone) {
-      // Arguments: (printReceiptFlag = false, hardwareVerifiedFlag = false)
-      await executeOrderSubmission(false, false);
+      // If mobile, pass null for receiptWindow. Skip popup blockers entirely.
+      await executeOrderSubmission(false, false, null);
       return; 
   }
 
-  // 2. Desktop Check: Proceed with printer verification only if on a computer.
+  // 2. Desktop Check: Proceed with printer verification
   const printerConfig = localStorage.getItem('sg_printer_config');
   if (!printerConfig) {
       if (confirm("⚠️ No printer configured! Would you like to configure your printer now?")) {
@@ -394,13 +393,32 @@ async function submitOrder() {
       return;
   }
 
+  // 🚨 CRITICAL FIX: Open the window immediately upon button click, BEFORE any 'await' happens.
+  // This physically bypasses the browser's Pop-up Blocker security rules.
+  let receiptWindow = window.open('', '_blank', 'width=350,height=600');
+  
+  if (receiptWindow) {
+      // Show a loading screen in the popup while the database saves the order
+      receiptWindow.document.write(`
+          <html style='background:#f8fafc;'>
+              <body style='font-family:sans-serif; text-align:center; padding-top:20%; color:#475569;'>
+                  <h2>Processing Order...</h2>
+                  <p>Please wait while the receipt is generated.</p>
+              </body>
+          </html>
+      `);
+  } else {
+      alert("⚠️ Warning: Your browser's Popup Blocker prevented the receipt window from opening! Please allow popups for this site.");
+  }
+
+  // Now we can safely execute the async checks without getting blocked
   const hardwareStatus = await checkHardwarePrinterConnection();
   
-  // Submit order requesting a receipt print since this is a desktop
-  executeOrderSubmission(true, hardwareStatus.connected);
+  // Pass the already-opened receiptWindow to the execution function
+  executeOrderSubmission(true, hardwareStatus.connected, receiptWindow);
 }
 
-async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
+async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag, receiptWindow) {
   const total = parseFloat(document.getElementById('cartTotal').innerText);
   const method = document.getElementById('paymentMethod').value;
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -426,22 +444,30 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
     if (res.ok) {
       const dataRes = await res.json();
       
-      // If printReceiptFlag is true (Desktop), it pops up the receipt window.
-      // If printReceiptFlag is false (Mobile), it skips directly to the else block.
-      if (printReceiptFlag) {
-          alert("Order Processed Successfully & Printing Receipt!");
-          printBranchReceipt(payload, dataRes.order_id);
-      } else {
+      // Clear Cart immediately after successful database save
+      cart = [];
+      updateState();
+      
+      // If we are on desktop and the window successfully opened
+      if (printReceiptFlag && receiptWindow) {
+          printBranchReceipt(payload, dataRes.order_id, receiptWindow);
+      } 
+      // If we are on desktop but the window was blocked by the browser
+      else if (printReceiptFlag && !receiptWindow) {
+          alert("Order Recorded Successfully! (Note: Receipt could not print because Popups are blocked)");
+      } 
+      // If we are on a Mobile Phone
+      else {
           alert("Order Recorded Successfully!");
       }
 
-      cart = [];
-      updateState();
     } else {
+      if (receiptWindow) receiptWindow.close(); // Close loading window on error
       const err = await res.json();
       alert(`Error: ${err.detail}`);
     }
   } catch (e) {
+    if (receiptWindow) receiptWindow.close(); // Close loading window on error
     alert("Network error processing sale.");
   }
 }
@@ -449,7 +475,7 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
 // =========================================================================
 // COMPACT RESTAURANT THERMAL RECEIPT GENERATOR (PAPER-SAVING + LOGO)
 // =========================================================================
-function printBranchReceipt(orderPayload, orderId) {
+function printBranchReceipt(orderPayload, orderId, receiptWindow) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
   const lowerBranch = branchName.toLowerCase();
@@ -489,7 +515,8 @@ function printBranchReceipt(orderPayload, orderId) {
     items: orderPayload.items.map(i => `${i.quantity}x ${i.item_name}`)
   });
 
-  const receiptWindow = window.open('', '_blank', 'width=350,height=600');
+  // Overwrite the "Processing..." loading screen with the actual receipt
+  receiptWindow.document.open();
   receiptWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -595,20 +622,19 @@ function printBranchReceipt(orderPayload, orderId) {
         </div>
 
         <script>
-          window.onload = function() {
-            try {
-              new QRCode(document.getElementById("receiptQrCode"), {
-                text: ${JSON.stringify(verificationData)},
-                width: 50,
-                height: 50,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.L
-              });
-            } catch(e) {}
-            
-            setTimeout(() => { window.print(); }, 400);
-          }
+          // Execute immediately to prevent timing issues with document.write
+          try {
+            new QRCode(document.getElementById("receiptQrCode"), {
+              text: ${JSON.stringify(verificationData)},
+              width: 50,
+              height: 50,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.L
+            });
+          } catch(e) {}
+          
+          setTimeout(() => { window.print(); }, 400);
         </script>
       </body>
     </html>
