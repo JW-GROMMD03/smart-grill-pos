@@ -316,7 +316,7 @@ function validatePaymentInputs() {
 }
 
 // =========================================================================
-// REAL HARDWARE PRINTER DETECTION & CHECKOUT FLOW
+// REAL HARDWARE PRINTER DETECTION & CHECKOUT FLOW (BYPASSED ON MOBILE)
 // =========================================================================
 async function checkHardwarePrinterConnection() {
     const savedConfig = localStorage.getItem('sg_printer_config');
@@ -342,6 +342,15 @@ async function checkHardwarePrinterConnection() {
 }
 
 async function submitOrder() {
+  // Check if user is on a mobile/phone device
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 1024;
+
+  if (isMobile) {
+      // Skip printer checks and config requirements entirely on mobile, just record order
+      await executeOrderSubmission(false, false);
+      return;
+  }
+
   const printerConfig = localStorage.getItem('sg_printer_config');
   if (!printerConfig) {
       if (confirm("⚠️ No printer configured! Would you like to configure your printer now?")) {
@@ -384,7 +393,7 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
           alert("Order Processed Successfully & Printing Receipt!");
           printBranchReceipt(payload, dataRes.order_id);
       } else {
-          alert("Order Processed Successfully (Submitted Without Printing).");
+          alert("Order Recorded Successfully!");
       }
 
       cart = [];
