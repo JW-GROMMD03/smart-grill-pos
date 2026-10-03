@@ -3,62 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Grill - Cashier Point of Sale</title>
-    <!-- Smart Grill Address Bar Favicon -->
+    <title>Smart Grill — Cashier Point of Sale</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: { 850: '#151f32', 900: '#0f172a', 950: '#020617' }
-                    }
-                }
-            }
+        // Initialize theme before render
+        if (!localStorage.getItem('sg_theme')) {
+            localStorage.setItem('sg_theme', 'light');
+        }
+        if (localStorage.getItem('sg_theme') === 'dark') {
+            document.documentElement.classList.add('dark');
         }
     </script>
-    <!-- QR Code Library for Deletion Authorizations & Receipt Verification -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden transition-colors duration-200">
+<body class="font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
 
     <!-- TOP NAVIGATION BAR -->
-    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex justify-between items-center sticky top-0 z-30 shadow-xs">
-        <div class="flex items-center gap-3">
-            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    <header class="glass-panel border-b px-5 py-3.5 flex justify-between items-center sticky top-0 z-30 shadow-xs">
+        <div class="flex items-center gap-3.5">
+            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">🔥</span>
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-lg shadow-xs">🔥</div>
                 <div>
-                    <h1 class="font-black text-sm uppercase tracking-wider text-amber-600 dark:text-amber-400">Smart Grill POS</h1>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400" id="cashierBranchLabel">Branch Workstation</p>
+                    <h1 class="font-black text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Smart Grill POS</h1>
+                    <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400" id="cashierBranchLabel">Branch Workstation</p>
                 </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 lg:gap-3">
-            <!-- Theme Toggle Icon Button -->
-            <button id="themeToggleBtn" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center gap-1 border border-slate-200 dark:border-slate-700" title="Toggle Light/Dark Mode">
-                <span id="themeIcon">🌙</span>
+        <div class="flex items-center gap-2 lg:gap-2.5">
+            <!-- Theme Toggle Button -->
+            <button id="themeToggleBtn" class="p-2.5 rounded-xl glass-panel text-slate-700 dark:text-slate-200 text-xs font-bold transition hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shadow-2xs" title="Toggle Light/Dark Mode">
+                <span id="themeIcon" class="text-sm">🌙</span>
             </button>
-            <!-- Mobile Cart Drawer Toggle -->
-            <button onclick="toggleCartDrawer()" class="lg:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-amber-500/30 transition flex items-center gap-1.5 relative">
-                <span>🛒</span> Cart <span id="mobileCartCount" class="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
+            
+            <!-- Mobile Cart Toggle -->
+            <button onclick="toggleCartDrawer()" class="lg:hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-amber-500/30 transition flex items-center gap-2 relative shadow-2xs">
+                <span>🛒</span> Cart <span id="mobileCartCount" class="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
             </button>
-            <button onclick="toggleModal('printerModal')" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5" title="Printer Settings">
+
+            <button onclick="toggleModal('printerModal')" class="glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
                 <span>🖨️</span> <span class="hidden sm:inline">Printer</span>
             </button>
-            <button onclick="toggleModal('expensesModal')" class="hidden sm:flex bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition items-center gap-1.5">
+
+            <button onclick="toggleModal('expensesModal')" class="hidden sm:flex glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl transition items-center gap-1.5 shadow-2xs">
                 <span>💸</span> Expense
             </button>
-            <button onclick="toggleModal('receiptsModal')" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5">
+
+            <button onclick="toggleModal('receiptsModal')" class="glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
                 <span>📜</span> <span class="hidden sm:inline">My Sales</span>
             </button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-2 rounded-lg border border-red-500/20 transition">
+
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-red-500/20 transition shadow-2xs">
                 Logout
             </button>
         </div>
@@ -68,136 +68,138 @@
     <div class="flex-1 flex overflow-hidden relative">
 
         <!-- MOBILE SIDEBAR OVERLAY -->
-        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden lg:hidden"></div>
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-20 hidden lg:hidden"></div>
 
-        <!-- LEFT SIDEBAR (HOLD QUEUE & CONTROLS) -->
-        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
-            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <h2 class="font-extrabold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest">Hold Queue (Max 6)</h2>
-                <button onclick="holdCurrentOrder()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-2.5 py-1.5 rounded border border-amber-500/30 transition">
+        <!-- LEFT SIDEBAR (HOLD QUEUE) -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 w-80 glass-panel border-r z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col shadow-sm lg:shadow-none">
+            <div class="p-4.5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                <h2 class="font-black text-xs text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1.5"><span>⏳</span> Hold Queue (Max 6)</h2>
+                <button onclick="holdCurrentOrder()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 transition shadow-2xs">
                     + Hold Cart
                 </button>
             </div>
-            <div id="holdList" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+            <div id="holdList" class="flex-1 overflow-y-auto p-3.5 space-y-2.5">
                 <!-- Held orders populated dynamically -->
             </div>
-            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-center">
-                <p class="text-[10px] text-slate-400 font-medium">Smart Grill POS v4.2</p>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
+                <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Smart Grill POS v4.2</p>
             </div>
         </aside>
 
         <!-- CENTER: DYNAMIC MENU CATALOG -->
-        <main class="flex-1 bg-slate-50 dark:bg-slate-950 overflow-y-auto p-4 lg:p-6">
-            <div class="mb-4">
-                <h2 class="text-sm font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Menu Catalog</h2>
-                <p class="text-xs text-slate-500">Select items to append to active order cart.</p>
+        <main class="flex-1 overflow-y-auto p-5 lg:p-7">
+            <div class="mb-5 flex justify-between items-end">
+                <div>
+                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Menu Catalog</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Select menu items to append instantly to the active order cart.</p>
+                </div>
             </div>
             
             <!-- Dynamic Menu Grid Container -->
             <div id="dynamicMenuGrid" class="space-y-6 pb-20 lg:pb-6">
-                <div class="text-center py-12 text-slate-400 text-xs animate-pulse">Loading menu catalog...</div>
+                <div class="text-center py-16 text-slate-400 text-xs font-medium animate-pulse">Loading menu catalog...</div>
             </div>
         </main>
 
         <!-- MOBILE CART OVERLAY BACKGROUND -->
-        <div id="cartOverlay" onclick="toggleCartDrawer()" class="fixed inset-0 bg-black/70 z-40 hidden lg:hidden"></div>
+        <div id="cartOverlay" onclick="toggleCartDrawer()" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-40 hidden lg:hidden"></div>
 
-        <!-- RIGHT PANEL: ACTIVE CART & CHECKOUT (RESPONSIVE DRAWER ON MOBILE) -->
-        <aside id="cartDrawer" class="fixed lg:static inset-y-0 right-0 w-80 sm:w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full z-50 transform translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out shadow-2xl">
-            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <button onclick="toggleCartDrawer()" class="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 font-bold mr-1">✕</button>
-                    <h2 class="font-extrabold text-sm text-slate-800 dark:text-slate-200 uppercase tracking-wider">Active Order Cart</h2>
+        <!-- RIGHT PANEL: ACTIVE CART & CHECKOUT -->
+        <aside id="cartDrawer" class="fixed lg:static inset-y-0 right-0 w-80 sm:w-96 glass-panel border-l flex flex-col h-full z-50 transform translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out shadow-2xl">
+            <div class="p-4.5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                <div class="flex items-center gap-2.5">
+                    <button onclick="toggleCartDrawer()" class="lg:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold text-sm">✕</button>
+                    <h2 class="font-black text-xs text-slate-800 dark:text-slate-200 uppercase tracking-widest">Active Order Cart</h2>
                 </div>
-                <button onclick="requestAdminAction('cart_clear', 'all')" class="text-red-600 dark:text-red-400 text-xs hover:underline font-bold">Clear Cart</button>
+                <button onclick="requestAdminAction('cart_clear', 'all')" class="text-red-600 dark:text-red-400 text-xs hover:underline font-bold transition">Clear Cart</button>
             </div>
 
             <!-- Cart Items List -->
-            <div id="cartList" class="flex-1 overflow-y-auto p-3 space-y-2">
-                <p class="text-slate-400 text-xs text-center py-10">No items selected yet.</p>
+            <div id="cartList" class="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+                <p class="text-slate-400 text-xs text-center py-14">No items selected yet.</p>
             </div>
 
-            <!-- CART CHECKOUT & PAYMENT CONTROLS -->
-            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 space-y-3">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-500 dark:text-slate-400 font-medium">Grand Total:</span>
-                    <span class="text-amber-600 dark:text-amber-400 font-black text-lg">KSh <span id="cartTotal">0.00</span></span>
+            <!-- CHECKOUT & PAYMENT CONTROLS -->
+            <div class="p-4.5 border-t border-slate-200 dark:border-slate-800 glass-panel space-y-3.5 shadow-lg">
+                <div class="flex justify-between items-center text-sm bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <span class="text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider">Grand Total:</span>
+                    <span class="text-amber-600 dark:text-amber-400 font-black text-base">KSh <span id="cartTotal">0.00</span></span>
                 </div>
 
                 <!-- Payment Method Selectors -->
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Payment Method</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment Method</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" id="btn-cash" onclick="selectPaymentMethod('cash')" class="pay-btn bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold py-2 rounded border border-slate-200 dark:border-slate-700 transition ring-2 ring-amber-500">Cash</button>
-                        <button type="button" id="btn-mpesa" onclick="selectPaymentMethod('mpesa')" class="pay-btn bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold py-2 rounded border border-slate-200 dark:border-slate-700 transition">M-Pesa</button>
-                        <button type="button" id="btn-partial" onclick="selectPaymentMethod('partial')" class="pay-btn bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold py-2 rounded border border-slate-200 dark:border-slate-700 transition">Partial</button>
+                        <button type="button" id="btn-cash" onclick="selectPaymentMethod('cash')" class="pay-btn glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold py-2.5 rounded-xl transition ring-2 ring-amber-500 shadow-2xs">Cash</button>
+                        <button type="button" id="btn-mpesa" onclick="selectPaymentMethod('mpesa')" class="pay-btn glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold py-2.5 rounded-xl transition shadow-2xs">M-Pesa</button>
+                        <button type="button" id="btn-partial" onclick="selectPaymentMethod('partial')" class="pay-btn glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold py-2.5 rounded-xl transition shadow-2xs">Partial</button>
                     </div>
                     <input type="hidden" id="paymentMethod" value="cash">
                 </div>
 
                 <!-- Partial Payment Subfields -->
-                <div id="partialFields" class="hidden space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                <div id="partialFields" class="hidden space-y-2.5 pt-1">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Cash Amount</label>
-                            <input type="number" id="cashInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Cash Amount</label>
+                            <input type="number" id="cashInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                         </div>
                         <div>
-                            <label class="block text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">M-Pesa Amount</label>
-                            <input type="number" id="mpesaInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">M-Pesa Amount</label>
+                            <input type="number" id="mpesaInput" oninput="validatePaymentInputs()" placeholder="0" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                         </div>
                     </div>
                 </div>
 
-                <p id="paymentError" class="text-red-600 dark:text-red-400 text-[11px] hidden font-semibold text-center"></p>
+                <p id="paymentError" class="text-red-600 dark:text-red-400 text-[11px] hidden font-bold text-center"></p>
 
-                <button id="checkoutBtn" onclick="submitOrder()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed text-slate-950 font-black text-sm py-3 rounded-xl transition shadow-lg">
-                    Complete & Print Receipt
+                <button id="checkoutBtn" onclick="submitOrder()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed text-slate-950 font-black text-xs uppercase tracking-wider py-3.5 rounded-xl transition shadow-md active:scale-98">
+                    Complete & Record Order
                 </button>
             </div>
         </aside>
     </div>
 
-    <!-- PRINTER CONFIGURATION SETTINGS MODAL -->
-    <div id="printerModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+    <!-- MODALS -->
+    <div id="printerModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
-                <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2"><span>🖨️</span> Thermal Printer Configuration</h3>
+                <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-2"><span>🖨️</span> Printer Configuration</h3>
                 <button onclick="toggleModal('printerModal')" class="text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold">✕</button>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Configure your receipt printer connection so sales can print automatically without falling back.</p>
-            <div class="space-y-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Configure your local receipt printer connection for automatic receipt generation on supported desktop workstations.</p>
+            <div class="space-y-3.5">
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Printer Name / Model</label>
-                    <input type="text" id="printerNameInput" placeholder="e.g., POS-58, Epson TM-T20" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Printer Name / Model</label>
+                    <input type="text" id="printerNameInput" placeholder="e.g., POS-58, Epson TM-T20" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Connection Interface</label>
-                    <select id="printerInterface" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Connection Interface</label>
+                    <select id="printerInterface" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                         <option value="USB">USB / Direct Thermal Driver</option>
                         <option value="NETWORK">Network (LAN / Wi-Fi IP)</option>
                         <option value="BLUETOOTH">Bluetooth Wireless</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Paper Width</label>
-                    <select id="printerWidth" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Paper Width</label>
+                    <select id="printerWidth" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                         <option value="58mm">58mm Thermal Roll</option>
                         <option value="80mm">80mm Thermal Roll</option>
                     </select>
                 </div>
-                <button onclick="savePrinterConfig()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition mt-2">Save Printer Settings</button>
+                <button onclick="savePrinterConfig()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-md mt-2">Save Settings</button>
             </div>
         </div>
     </div>
 
-    <!-- QUANTITY SELECTION MODAL -->
-    <div id="qtyModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+    <!-- QUANTITY MODAL -->
+    <div id="qtyModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
             <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider" id="qtyItemName">Select Quantity</h3>
             <div>
-                <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Quantity / Portions</label>
-                <select id="qtySelect" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Portions / Units</label>
+                <select id="qtySelect" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                     <option value="1">1 Portion / Item</option>
                     <option value="2">2 Portions / Items</option>
                     <option value="3">3 Portions / Items</option>
@@ -209,64 +211,64 @@
                 </select>
             </div>
             <div class="flex gap-3 pt-2">
-                <button onclick="toggleModal('qtyModal')" class="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-2.5 rounded-lg text-xs transition">Cancel</button>
-                <button onclick="confirmQtyAdd()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-lg text-xs transition">Add to Cart</button>
+                <button onclick="toggleModal('qtyModal')" class="flex-1 glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl text-xs transition">Cancel</button>
+                <button onclick="confirmQtyAdd()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition shadow-md">Add to Cart</button>
             </div>
         </div>
     </div>
 
-    <!-- EXPENSES LOGGING MODAL -->
-    <div id="expensesModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+    <!-- EXPENSES MODAL -->
+    <div id="expensesModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
             <div class="flex justify-between items-center">
                 <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Log Operating Expense</h3>
                 <button onclick="toggleModal('expensesModal')" class="text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold">✕</button>
             </div>
-            <form onsubmit="submitExpense(event)" class="space-y-3">
+            <form onsubmit="submitExpense(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Description / Reason</label>
-                    <input type="text" id="expDesc" required placeholder="e.g., Charcoal purchase, drinking water..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Description / Reason</label>
+                    <input type="text" id="expDesc" required placeholder="e.g., Charcoal purchase, drinking water..." class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Amount (KSh) [Max 1,000 KSh]</label>
-                    <input type="number" id="expAmt" required max="1000" placeholder="0.00" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Amount (KSh) [Max 1,000 KSh]</label>
+                    <input type="number" id="expAmt" required max="1000" placeholder="0.00" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-600 dark:text-slate-400 mb-1">Payment Source</label>
-                    <select id="expType" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Payment Source</label>
+                    <select id="expType" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 transition">
                         <option value="CASH">Cash Drawer</option>
                         <option value="MPESA">M-Pesa Account</option>
                     </select>
                 </div>
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs transition mt-2">Record Expense</button>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-md mt-2">Record Expense</button>
             </form>
         </div>
     </div>
 
-    <!-- MY SALES & HISTORY MODAL -->
-    <div id="receiptsModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl">
+    <!-- SALES & HISTORY MODAL -->
+    <div id="receiptsModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Shift Transactions & Expenses</h3>
                 <button onclick="toggleModal('receiptsModal')" class="text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold">✕</button>
             </div>
-            <div id="receiptsList" class="flex-1 overflow-y-auto space-y-2 pr-1">
-                <p class="text-slate-400 text-xs text-center py-8">Loading history...</p>
+            <div id="receiptsList" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                <p class="text-slate-400 text-xs text-center py-10">Loading history...</p>
             </div>
         </div>
     </div>
 
-    <!-- ADMIN AUTHORIZATION / QR CODE MODAL -->
-    <div id="adminModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl">
-            <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Manager Authorization Required</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Scan QR code with admin authenticator or provide short code override to approve action.</p>
-            <div id="adminQrCode" class="bg-white p-3 rounded-xl inline-block mx-auto flex justify-center border border-slate-200"></div>
-            <div class="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                <p class="text-[10px] text-slate-400 uppercase font-bold">Short Verification Code</p>
+    <!-- ADMIN AUTHORIZATION MODAL -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl">
+            <h3 class="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Manager Authorization</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Scan QR code or use verification short-code override to authorize action.</p>
+            <div id="adminQrCode" class="bg-white p-3 rounded-2xl inline-block mx-auto flex justify-center border border-slate-200 shadow-xs"></div>
+            <div class="bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider">Short Verification Code</p>
                 <p id="adminShortCode" class="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-widest mt-1">------</p>
             </div>
-            <button onclick="toggleModal('adminModal'); if(deletePollInterval) clearInterval(deletePollInterval);" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-2 rounded-lg text-xs transition">Cancel Request</button>
+            <button onclick="toggleModal('adminModal'); if(deletePollInterval) clearInterval(deletePollInterval);" class="w-full glass-panel hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Cancel Request</button>
         </div>
     </div>
 
@@ -275,21 +277,44 @@
         <span class="text-6xl mb-4 animate-bounce">🔒</span>
         <h2 class="text-2xl font-black text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Workstation Access Revoked</h2>
         <p class="text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto mb-6" id="lockoutReason">Your session has been restricted by the executive administration.</p>
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl text-xs text-slate-500 shadow-xs">
+        <div class="glass-panel p-4 rounded-xl text-xs text-slate-500 shadow-xs">
             <p>Redirecting to login portal shortly...</p>
         </div>
     </div>
 
-    <!-- Load Core POS Controller Script -->
+    <!-- Core POS Script -->
     <script src="/assets/js/pos.js"></script>
     <script>
+        function updateDashboardThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('themeIcon');
+            if (icon) icon.innerText = isDark ? '☀️' : '🌙';
+        }
+
+        function toggleDashboardTheme() {
+            const root = document.documentElement;
+            if (root.classList.contains('dark')) {
+                root.classList.remove('dark');
+                localStorage.setItem('sg_theme', 'light');
+            } else {
+                root.classList.add('dark');
+                localStorage.setItem('sg_theme', 'dark');
+            }
+            updateDashboardThemeIcon();
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
+            updateDashboardThemeIcon();
+            const themeBtn = document.getElementById('themeToggleBtn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', toggleDashboardTheme);
+            }
+
             const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
             if(user.branch) {
                 document.getElementById('cashierBranchLabel').innerText = `${user.branch} Workstation`;
             }
             
-            // Load saved printer config if present
             const savedPrinter = localStorage.getItem('sg_printer_config');
             if (savedPrinter) {
                 try {

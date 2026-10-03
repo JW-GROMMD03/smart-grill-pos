@@ -6,24 +6,39 @@
   <title>Smart Grill — Cashier Login</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <script>
+      // Enforce Light Mode by default for login if not set
+      if (!localStorage.getItem('sg_theme')) {
+          localStorage.setItem('sg_theme', 'light');
+      }
+      if (localStorage.getItem('sg_theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+      }
+  </script>
 </head>
-<body class="min-h-screen flex items-center justify-center relative p-4 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+<body class="min-h-screen flex items-center justify-center relative p-4">
 
-  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#e2e8f0,transparent_50%)] dark:bg-[radial-gradient(circle_at_top_right,#1e293b,transparent_50%)]"></div>
+  <!-- THEME TOGGLE BUTTON -->
+  <button onclick="toggleLoginTheme()" class="absolute top-5 right-5 p-3 rounded-xl glass-panel text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition z-20 flex items-center gap-2 text-xs font-bold">
+    <span id="loginThemeIcon">🌙</span> <span class="hidden sm:inline">Theme</span>
+  </button>
 
-  <div class="bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700 max-w-md w-full p-8 rounded-2xl shadow-xl relative z-10 space-y-6">
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#e2e8f0,transparent_50%)] dark:bg-[radial-gradient(circle_at_top_right,#1e293b,transparent_50%)] pointer-events-none"></div>
+
+  <div class="glass-panel max-w-md w-full p-8 rounded-3xl shadow-xl relative z-10 space-y-6">
     <div class="text-center space-y-2">
-      <div class="inline-block p-3 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-500 mb-2">🔥</div>
-      <h1 class="text-2xl font-extrabold tracking-wider text-slate-900 dark:text-white">SMART GRILL POS</h1>
-      <p class="text-xs text-slate-500 dark:text-slate-400">Cashier Terminal Login</p>
+      <div class="inline-flex w-14 h-14 rounded-2xl bg-amber-500/10 items-center justify-center text-2xl text-amber-600 dark:text-amber-400 mb-1 shadow-xs">🔥</div>
+      <h1 class="text-2xl font-black tracking-wide text-slate-900 dark:text-white">SMART GRILL POS</h1>
+      <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Cashier Terminal Login Portal</p>
     </div>
 
-    <div id="alertBox" class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold text-center break-words"></div>
+    <div id="alertBox" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold text-center break-words"></div>
 
     <form id="loginForm" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">Select Branch</label>
-        <select id="branchSelect" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+        <label class="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Select Branch</label>
+        <select id="branchSelect" required class="w-full px-4 py-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
           <option value="" disabled selected>-- Select Your Branch --</option>
           <option value="Smartgrill">Smartgrill</option>
           <option value="nyama villa">nyama villa</option>
@@ -34,25 +49,48 @@
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">Username</label>
-        <input type="text" id="username" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
+        <label class="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Username</label>
+        <input type="text" id="username" required placeholder="Enter username" class="w-full px-4 py-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition">
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">4-Digit PIN</label>
-        <input type="password" id="pin" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition tracking-widest text-center font-mono">
+        <label class="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">4-Digit PIN</label>
+        <input type="password" id="pin" required maxlength="4" placeholder="••••" class="w-full px-4 py-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-base focus:outline-none focus:border-amber-500 transition tracking-widest text-center font-mono">
       </div>
 
-      <button type="submit" id="submitBtn" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition shadow-lg active:scale-95 text-sm flex justify-center items-center">
+      <button type="submit" id="submitBtn" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition shadow-lg active:scale-98 text-xs uppercase tracking-wider flex justify-center items-center mt-2">
         <svg id="btnSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-slate-950 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span id="btnText">SIGN IN TO POS TERMINAL</span>
+        <span id="btnText">Sign In to Terminal</span>
       </button>
     </form>
   </div>
 
+  <script>
+      function updateLoginThemeIcon() {
+          const isDark = document.documentElement.classList.contains('dark');
+          const icon = document.getElementById('loginThemeIcon');
+          if (icon) icon.innerText = isDark ? '☀️' : '🌙';
+      }
+
+      function toggleLoginTheme() {
+          const root = document.documentElement;
+          if (root.classList.contains('dark')) {
+              root.classList.remove('dark');
+              localStorage.setItem('sg_theme', 'light');
+          } else {
+              root.classList.add('dark');
+              localStorage.setItem('sg_theme', 'dark');
+          }
+          updateLoginThemeIcon();
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+          updateLoginThemeIcon();
+      });
+  </script>
   <script src="/assets/js/auth.js"></script>
 </body>
 </html>
