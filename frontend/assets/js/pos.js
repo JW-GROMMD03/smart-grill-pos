@@ -8,13 +8,11 @@ let pendingItem = null;
 let cashierWs = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Enforce Light Mode as default if no preference is saved
   if (!localStorage.getItem('sg_theme')) {
     localStorage.setItem('sg_theme', 'light');
   }
   applyTheme(localStorage.getItem('sg_theme'));
 
-  // Attach theme toggle listener if button exists in DOM
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
     themeBtn.addEventListener('click', toggleAppTheme);
@@ -34,7 +32,6 @@ function applyTheme(theme) {
   }
   localStorage.setItem('sg_theme', theme);
 
-  // Update toggle icon if present
   const themeIcon = document.getElementById('themeIcon');
   if (themeIcon) {
     themeIcon.innerText = theme === 'dark' ? '☀️' : '🌙';
@@ -379,8 +376,7 @@ async function submitOrder() {
   const isMobilePhone = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   if (isMobilePhone) {
-      // If mobile, pass null for receiptWindow. Skip popup blockers entirely.
-      await executeOrderSubmission(false, false, null);
+      await executeOrderSubmission(false, false);
       return; 
   }
 
@@ -393,32 +389,11 @@ async function submitOrder() {
       return;
   }
 
-  // 🚨 CRITICAL FIX: Open the window immediately upon button click, BEFORE any 'await' happens.
-  // This physically bypasses the browser's Pop-up Blocker security rules.
-  let receiptWindow = window.open('', '_blank', 'width=350,height=600');
-  
-  if (receiptWindow) {
-      // Show a loading screen in the popup while the database saves the order
-      receiptWindow.document.write(`
-          <html style='background:#f8fafc;'>
-              <body style='font-family:sans-serif; text-align:center; padding-top:20%; color:#475569;'>
-                  <h2>Processing Order...</h2>
-                  <p>Please wait while the receipt is generated.</p>
-              </body>
-          </html>
-      `);
-  } else {
-      alert("⚠️ Warning: Your browser's Popup Blocker prevented the receipt window from opening! Please allow popups for this site.");
-  }
-
-  // Now we can safely execute the async checks without getting blocked
   const hardwareStatus = await checkHardwarePrinterConnection();
-  
-  // Pass the already-opened receiptWindow to the execution function
-  executeOrderSubmission(true, hardwareStatus.connected, receiptWindow);
+  executeOrderSubmission(true, hardwareStatus.connected);
 }
 
-async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag, receiptWindow) {
+async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag) {
   const total = parseFloat(document.getElementById('cartTotal').innerText);
   const method = document.getElementById('paymentMethod').value;
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
@@ -448,34 +423,25 @@ async function executeOrderSubmission(printReceiptFlag, hardwareVerifiedFlag, re
       cart = [];
       updateState();
       
-      // If we are on desktop and the window successfully opened
-      if (printReceiptFlag && receiptWindow) {
-          printBranchReceipt(payload, dataRes.order_id, receiptWindow);
-      } 
-      // If we are on desktop but the window was blocked by the browser
-      else if (printReceiptFlag && !receiptWindow) {
-          alert("Order Recorded Successfully! (Note: Receipt could not print because Popups are blocked)");
-      } 
-      // If we are on a Mobile Phone
-      else {
+      if (printReceiptFlag) {
+          alert("Order Recorded Successfully! Sending to printer...");
+          printBranchReceipt(payload, dataRes.order_id);
+      } else {
           alert("Order Recorded Successfully!");
       }
-
     } else {
-      if (receiptWindow) receiptWindow.close(); // Close loading window on error
       const err = await res.json();
       alert(`Error: ${err.detail}`);
     }
   } catch (e) {
-    if (receiptWindow) receiptWindow.close(); // Close loading window on error
     alert("Network error processing sale.");
   }
 }
 
 // =========================================================================
-// COMPACT RESTAURANT THERMAL RECEIPT GENERATOR (PAPER-SAVING + LOGO)
+// TRUE HIDDEN IFRAME GENERATOR (100% BYPASSES ALL POPUP BLOCKERS)
 // =========================================================================
-function printBranchReceipt(orderPayload, orderId, receiptWindow) {
+function printBranchReceipt(orderPayload, orderId) {
   const user = JSON.parse(localStorage.getItem('sg_user') || '{}');
   const branchName = (user.branch || localStorage.getItem('cashier_branch') || 'Smartgrill').trim();
   const lowerBranch = branchName.toLowerCase();
@@ -515,9 +481,25 @@ function printBranchReceipt(orderPayload, orderId, receiptWindow) {
     items: orderPayload.items.map(i => `${i.quantity}x ${i.item_name}`)
   });
 
-  // Overwrite the "Processing..." loading screen with the actual receipt
-  receiptWindow.document.open();
-  receiptWindow.document.write(`
+  // Remove the old iframe if one exists
+  const oldFrame = document.getElementById('hiddenReceiptFrame');
+  if (oldFrame) oldFrame.remove();
+
+  // Create the new invisible iframe
+  const iframe = document.createElement('iframe');
+  iframe.id = 'hiddenReceiptFrame';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0px';
+  iframe.style.height = '0px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  // Write the receipt HTML directly into the invisible iframe
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`
     <!DOCTYPE html>
     <html>
       <head>
@@ -549,22 +531,9 @@ function printBranchReceipt(orderPayload, orderId, receiptWindow) {
           .qr-container { text-align: center; margin: 4px 0 2px 0; }
           .qr-box { display: inline-block; }
           .footer { margin-top: 4px; font-size: 9px; text-align: center; }
-          
-          .no-print { margin-bottom: 8px; padding: 6px; background: #f1f5f9; text-align: center; }
-          .no-print button { padding: 4px 10px; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px;}
-          
-          @media print {
-            .no-print { display: none !important; }
-            body { width: 100%; } 
-            .receipt-container { padding: 1mm 2mm; } 
-          }
         </style>
       </head>
       <body>
-        <div class="no-print">
-          <button onclick="window.print()">🖨 Print Receipt</button>
-        </div>
-
         <div class="receipt-container">
           <div class="center">
             <div style="font-size: 18px; margin-bottom: 1px;">🔥</div>
@@ -622,7 +591,7 @@ function printBranchReceipt(orderPayload, orderId, receiptWindow) {
         </div>
 
         <script>
-          // Execute immediately to prevent timing issues with document.write
+          // Render QR code inside the iframe
           try {
             new QRCode(document.getElementById("receiptQrCode"), {
               text: ${JSON.stringify(verificationData)},
@@ -633,13 +602,22 @@ function printBranchReceipt(orderPayload, orderId, receiptWindow) {
               correctLevel: QRCode.CorrectLevel.L
             });
           } catch(e) {}
-          
-          setTimeout(() => { window.print(); }, 400);
         </script>
       </body>
     </html>
   `);
-  receiptWindow.document.close();
+  doc.close();
+
+  // Tell the parent window to command the hidden iframe to print itself 
+  // after giving it a brief moment to render the QR code.
+  setTimeout(() => {
+      try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+      } catch(e) {
+          console.error("Iframe print execution failed:", e);
+      }
+  }, 750);
 }
 
 function holdCurrentOrder() {
